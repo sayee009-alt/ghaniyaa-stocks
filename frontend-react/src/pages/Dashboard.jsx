@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import SearchBar from "../components/SearchBar";
 import StockCard from "../components/StockCard";
@@ -7,6 +7,9 @@ import SummaryCard from "../components/SummaryCard";
 import Watchlist from "../components/Watchlist";
 import FinancialCard from "../components/FinancialCard";
 import RecommendationCard from "../components/RecommendationCard";
+import NewsCard from "../components/NewsCard";
+import { getNews } from "../services/api";
+import ScreenerTable from "../components/ScreenerTable";
 
 import {
   getLiveStock,
@@ -14,17 +17,20 @@ import {
   getHistory,
   getSummary,
   getFinancials,
+  getScreener,
   getWatchlist,
   addToWatchlist,
 } from "../services/api";
 
 function Dashboard() {
+    const [screener, setScreener] = useState([]);
   const [stock, setStock] = useState(null);
   const [score, setScore] = useState(null);
   const [history, setHistory] = useState(null);
   const [summary, setSummary] = useState(null);
   const [financials, setFinancials] = useState(null);
   const [watchlist, setWatchlist] = useState([]);
+  const [news, setNews] = useState([]);
 
   async function analyzeStock(symbol) {
     try {
@@ -43,6 +49,9 @@ setHistory(historyData);
 const summaryData = await getSummary(upperSymbol);
 setSummary(summaryData);
 
+const newsData = await getNews(upperSymbol);
+setNews(newsData.news);
+
 const financialData = await getFinancials(upperSymbol);
 setFinancials(financialData);
 
@@ -56,6 +65,19 @@ setWatchlist(watchlistData.watchlist);
       alert("Unable to fetch stock data.");
     }
   }
+
+  useEffect(() => {
+  async function loadScreener() {
+    try {
+      const data = await getScreener();
+      setScreener(data);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  loadScreener();
+}, []);
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -78,20 +100,33 @@ setWatchlist(watchlistData.watchlist);
         </div>
 
         <div className="mt-8">
+         <FinancialCard financials={financials} />
+         </div>
+
+        <div className="mt-8">
            <RecommendationCard score={score} />  
         </div>
 
-        <div className="mt-8">
-          <StockChart history={history} />
-        </div>
+        
 
         <div className="mt-8">
           <SummaryCard summary={summary} />
         </div>
 
         <div className="mt-8">
-         <FinancialCard financials={financials} />
-         </div>
+        <NewsCard news={news} />
+        </div>
+        
+
+        
+
+<div className="mt-8">
+          <StockChart history={history} />
+        </div>
+
+        <div className="mt-8">
+  <ScreenerTable stocks={screener} />
+</div>
 
         <div className="mt-8">
           <Watchlist watchlist={watchlist} />

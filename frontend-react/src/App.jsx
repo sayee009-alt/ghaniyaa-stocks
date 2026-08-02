@@ -1,11 +1,15 @@
+import { Routes, Route } from "react-router-dom";
+
 import Dashboard from "./pages/Dashboard";
-import { getLiveStock } from "./services/api";
+import Screener from "./pages/Screener";
 
 function App() {
-
-  getLiveStock("TCS").then(console.log);
-
-  return <Dashboard />;
+  return (
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/screener" element={<Screener />} />
+    </Routes>
+  );
 }
 
 export default App;

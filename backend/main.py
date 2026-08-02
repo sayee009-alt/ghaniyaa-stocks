@@ -2,9 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import pandas as pd
-from watchlist import load_watchlist, save_watchlist
+from routes.watchlist import load_watchlist, save_watchlist
+from routes.screener import router as screener_router
 
 app = FastAPI()
+
+app.include_router(screener_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -173,3 +176,50 @@ def get_watchlist():
     return {
         "watchlist": load_watchlist()
     }
+@app.get("/compare/{symbol1}/{symbol2}")
+def compare(symbol1: str, symbol2: str):
+
+    stock1 = yf.Ticker(symbol1.upper() + ".NS")
+    stock2 = yf.Ticker(symbol2.upper() + ".NS")
+
+    info1 = stock1.info
+    info2 = stock2.info
+
+    return {
+        "stock1": {
+            "symbol": symbol1.upper(),
+            "company": info1.get("longName"),
+            "price": info1.get("currentPrice"),
+            "pe": info1.get("trailingPE"),
+            "roe": info1.get("returnOnEquity")
+        },
+        "stock2": {
+            "symbol": symbol2.upper(),
+            "company": info2.get("longName"),
+            "price": info2.get("currentPrice"),
+            "pe": info2.get("trailingPE"),
+            "roe": info2.get("returnOnEquity")
+        }
+    }
+@app.get("/news/{symbol}")
+def stock_news(symbol: str):
+    return {
+        "news": [
+            {
+                "title": f"{symbol.upper()} announces quarterly results",
+                "source": "Ghaniyaa Demo",
+                "url": "#"
+            },
+            {
+                "title": f"{symbol.upper()} expands AI business",
+                "source": "Ghaniyaa Demo",
+                "url": "#"
+            },
+            {
+                "title": f"Analysts discuss {symbol.upper()} outlook",
+                "source": "Ghaniyaa Demo",
+                "url": "#"
+            }
+        ]
+    }
+

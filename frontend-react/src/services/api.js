@@ -35,3 +35,18 @@ export async function addToWatchlist(symbol) {
 
   return await response.json();
 }
+export async function compareStocks(symbol1, symbol2) {
+  const response = await fetch(
+    `${API_BASE}/compare/${symbol1}/${symbol2}`
+  );
+
+  return await response.json();
+}
+export async function getNews(symbol) {
+  const response = await fetch(`${API_BASE}/news/${symbol}`);
+  return await response.json();
+}
+export async function getScreener() {
+  const response = await fetch(`${API_BASE}/screener`);
+  return await response.json();
+}
