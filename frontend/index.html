@@ -13,14 +13,14 @@
         <h2>AI Investment Research Platform</h2>
 
         <div class="search-box">
-            <input type="text" placeholder="Enter stock symbol (TCS, INFY, RELIANCE)">
-            <button>Analyze</button>
+            <input id="stockInput" type="text" placeholder="Enter stock symbol (TCS)">
+            <button onclick="analyzeStock()">Analyze</button>
         </div>
 
-        <div class="result">
+        <div id="result" class="result">
             <p>Stock analysis will appear here.</p>
         </div>
     </div>
-
+<script src="script.js"></script>
 </body>
 </html>

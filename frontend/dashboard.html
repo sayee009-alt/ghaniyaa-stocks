@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghaniyaa Stocks Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+<h1>📈 Ghaniyaa Stocks</h1>
+
+<h2>AI-Powered Investment Dashboard</h2>
+
+<div class="search-box">
+    <input id="stockInput" placeholder="Search Stock">
+    <button onclick="analyzeStock()">Analyze</button>
+</div>
+
+<div id="result" class="result">
+
+    <div class="card">
+        <h3>Company</h3>
+        <p id="company">-</p>
+    </div>
+
+    <div class="card">
+        <h3>Current Price</h3>
+        <p id="price">-</p>
+    </div>
+
+    <div class="card">
+        <h3>Sector</h3>
+        <p id="sector">-</p>
+    </div>
+
+    <div class="card">
+        <h3>Market Cap</h3>
+        <p id="marketCap">-</p>
+    </div>
+    
+    <div class="card score-card">
+    <h3>⭐ Ghaniyaa Score™</h3>
+    <p id="score">-</p>
+</div>
+<div class="chart-container">
+    <h2>📈 Last 30 Days Price Trend</h2>
+    <canvas id="stockChart"></canvas>
+</div>
+<div class="summary-container">
+    <h2>🤖 AI Investment Summary</h2>
+    <p id="summary">
+        Search for a stock to view the AI-generated summary.
+    </p>
+</div>
+
+</div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js"></script>
+
+</body>
+</html>
