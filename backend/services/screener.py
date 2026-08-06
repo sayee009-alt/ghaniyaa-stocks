@@ -1,5 +1,5 @@
 import yfinance as yf
-from services.score import calculate_score
+from backend.services.score import calculate_score
 
 NSE_STOCKS = [
     "TCS",

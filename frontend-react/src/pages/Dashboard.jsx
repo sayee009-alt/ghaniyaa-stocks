@@ -10,6 +10,11 @@ import RecommendationCard from "../components/RecommendationCard";
 import NewsCard from "../components/NewsCard";
 import { getNews } from "../services/api";
 import ScreenerTable from "../components/ScreenerTable";
+import CompareCard from "../components/CompareCard";
+import CompareChart from "../components/CompareChart";
+import PortfolioBuilder from "../components/PortfolioBuilder";
+import PortfolioCard from "../components/PortfolioCard";
+import PortfolioPieChart from "../components/PortfolioPieChart";
 
 import {
   getLiveStock,
@@ -20,6 +25,9 @@ import {
   getScreener,
   getWatchlist,
   addToWatchlist,
+  compareStocks,
+  getPortfolio,
+  addPortfolio
 } from "../services/api";
 
 function Dashboard() {
@@ -31,6 +39,15 @@ function Dashboard() {
   const [financials, setFinancials] = useState(null);
   const [watchlist, setWatchlist] = useState([]);
   const [news, setNews] = useState([]);
+  const [symbol1, setSymbol1] = useState("");
+const [symbol2, setSymbol2] = useState("");
+const [comparison, setComparison] = useState(null);
+const [portfolio, setPortfolio] = useState({
+  holdings: [],
+  totalInvestment: 0,
+  currentValue: 0,
+  profit: 0,
+});
 
   async function analyzeStock(symbol) {
     try {
@@ -43,41 +60,69 @@ function Dashboard() {
       setScore(scoreData);
 
       const historyData = await getHistory(upperSymbol);
-console.log("History API:", historyData);
-setHistory(historyData);
+      console.log("History API:", historyData);
+      setHistory(historyData);
 
-const summaryData = await getSummary(upperSymbol);
-setSummary(summaryData);
+      const summaryData = await getSummary(upperSymbol);
+      setSummary(summaryData);
 
-const newsData = await getNews(upperSymbol);
-setNews(newsData.news);
+      const newsData = await getNews(upperSymbol);
+      setNews(newsData.news);
 
-const financialData = await getFinancials(upperSymbol);
-setFinancials(financialData);
+      const financialData = await getFinancials(upperSymbol);
+      setFinancials(financialData);
 
-await addToWatchlist(upperSymbol);
+      await addToWatchlist(upperSymbol);
 
-const watchlistData = await getWatchlist();
-setWatchlist(watchlistData.watchlist);
+      const watchlistData = await getWatchlist();
+      setWatchlist(watchlistData.watchlist);
 
     } catch (error) {
-      console.error(error);
-      alert("Unable to fetch stock data.");
-    }
+  console.error("Analyze Error:", error);
+  alert(error.message);
+}
   }
+  
+async function addPortfolioStock(stock) {
+  await addPortfolio(stock);
+
+  const portfolioData = await getPortfolio();
+
+  console.log(portfolioData);
+  
+setPortfolio(portfolioData);
+}
+
+async function compare() {
+  try {
+    const data = await compareStocks(symbol1, symbol2);
+
+    console.log(data);
+
+    setComparison(data);
+
+  } catch (error) {
+    console.error(error);
+  }
+}
 
   useEffect(() => {
-  async function loadScreener() {
+  async function loadDashboard() {
     try {
-      const data = await getScreener();
-      setScreener(data);
+      const screenerData = await getScreener();
+      setScreener(screenerData);
+
+      const portfolioData = await getPortfolio();
+      setPortfolio(portfolioData);
+
     } catch (error) {
       console.error(error);
     }
   }
 
-  loadScreener();
+  loadDashboard();
 }, []);
+
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -91,9 +136,64 @@ setWatchlist(watchlistData.watchlist);
           AI-Powered Investment Research Platform
         </p>
 
+
+
         <div className="mt-8">
           <SearchBar onAnalyze={analyzeStock} />
         </div>
+
+        <div className="mt-8 bg-white p-6 rounded shadow">
+
+  <h2 className="text-2xl font-bold mb-4">
+    📊 Compare Stocks
+  </h2>
+  
+
+  <div className="flex gap-4">
+
+    <input
+      type="text"
+      placeholder="First Symbol"
+      value={symbol1}
+      onChange={(e) => setSymbol1(e.target.value.toUpperCase())}
+      className="border p-2 rounded flex-1"
+    />
+
+    <input
+      type="text"
+      placeholder="Second Symbol"
+      value={symbol2}
+      onChange={(e) => setSymbol2(e.target.value.toUpperCase())}
+      className="border p-2 rounded flex-1"
+    />
+
+    <button
+      onClick={compare}
+      className="bg-blue-600 text-white px-4 rounded"
+    >
+      Compare
+    </button>
+
+  </div>
+
+</div>
+
+<div className="mt-8">
+  <CompareCard comparison={comparison} />
+</div>
+<div className="mt-8">
+  <CompareChart
+    stock1={comparison?.stock1}
+    stock2={comparison?.stock2}
+  />
+</div>
+<PortfolioBuilder onAdd={addPortfolioStock} />
+        <div className="mt-8">
+  <PortfolioCard portfolio={portfolio} />
+</div>
+<div className="mt-8">
+  <PortfolioPieChart portfolio={portfolio} />
+</div>
 
         <div className="mt-8">
           <StockCard stock={stock} score={score} />

@@ -50,3 +50,19 @@ export async function getScreener() {
   const response = await fetch(`${API_BASE}/screener`);
   return await response.json();
 }
+export async function addPortfolio(stock) {
+  const response = await fetch(`${API_BASE}/portfolio`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(stock),
+  });
+
+  return await response.json();
+}
+
+export async function getPortfolio() {
+  const response = await fetch(`${API_BASE}/portfolio`);
+  return await response.json();
+}

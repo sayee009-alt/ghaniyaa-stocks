@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from services.screener import screen_all_stocks
+from backend.services.screener import screen_all_stocks
 
 router = APIRouter()
 

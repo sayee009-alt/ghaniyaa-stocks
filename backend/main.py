@@ -2,12 +2,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import pandas as pd
-from routes.watchlist import load_watchlist, save_watchlist
-from routes.screener import router as screener_router
+from backend.routes.watchlist import load_watchlist, save_watchlist
+from backend.routes.screener import router as screener_router
+from backend.routes.search import router as search_router
+from backend.routes.portfolio import router as portfolio_router
 
 app = FastAPI()
 
 app.include_router(screener_router)
+app.include_router(search_router)
+app.include_router(portfolio_router)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -185,21 +190,74 @@ def compare(symbol1: str, symbol2: str):
     info1 = stock1.info
     info2 = stock2.info
 
+    history1 = stock1.history(period="1mo")
+    history2 = stock2.history(period="1mo")
+
+    pe1 = info1.get("trailingPE") or 999
+    pe2 = info2.get("trailingPE") or 999
+
+    roe1 = info1.get("returnOnEquity") or 0
+    roe2 = info2.get("returnOnEquity") or 0
+
+    score1 = 0
+    score2 = 0
+
+    # Higher price
+    if info1.get("currentPrice", 0) > info2.get("currentPrice", 0):
+        score1 += 1
+    else:
+        score2 += 1
+
+    # Lower PE
+    if pe1 < pe2:
+        score1 += 1
+    else:
+        score2 += 1
+
+    # Higher ROE
+    if roe1 > roe2:
+        score1 += 1
+    else:
+        score2 += 1
+
+    print("Score1 =", score1)
+    print("Score2 =", score2)
+
+    if score1 > score2:
+        winner = symbol1.upper()
+        reason = "Better valuation and profitability."
+    elif score2 > score1:
+        winner = symbol2.upper()
+        reason = "Better valuation and profitability."
+    else:
+        winner = "Tie"
+        reason = "Both stocks have similar fundamentals."
+
     return {
         "stock1": {
             "symbol": symbol1.upper(),
             "company": info1.get("longName"),
             "price": info1.get("currentPrice"),
-            "pe": info1.get("trailingPE"),
-            "roe": info1.get("returnOnEquity")
+            "pe": pe1,
+            "roe": roe1,
+            "history": {
+                "dates": history1.index.strftime("%Y-%m-%d").tolist(),
+                "prices": history1["Close"].round(2).tolist()
+            }
         },
         "stock2": {
             "symbol": symbol2.upper(),
             "company": info2.get("longName"),
             "price": info2.get("currentPrice"),
-            "pe": info2.get("trailingPE"),
-            "roe": info2.get("returnOnEquity")
-        }
+            "pe": pe2,
+            "roe": roe2,
+            "history": {
+                "dates": history2.index.strftime("%Y-%m-%d").tolist(),
+                "prices": history2["Close"].round(2).tolist()
+            }
+        },
+        "winner": winner,
+        "reason": reason
     }
 @app.get("/news/{symbol}")
 def stock_news(symbol: str):

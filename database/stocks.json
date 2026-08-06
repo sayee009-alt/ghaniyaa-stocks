@@ -1,0 +1,42 @@
+[
+  {
+    "symbol": "TCS",
+    "company": "Tata Consultancy Services Limited"
+  },
+  {
+    "symbol": "INFY",
+    "company": "Infosys Limited"
+  },
+  {
+    "symbol": "RELIANCE",
+    "company": "Reliance Industries Limited"
+  },
+  {
+    "symbol": "HDFCBANK",
+    "company": "HDFC Bank Limited"
+  },
+  {
+    "symbol": "ICICIBANK",
+    "company": "ICICI Bank Limited"
+  },
+  {
+    "symbol": "SBIN",
+    "company": "State Bank of India"
+  },
+  {
+    "symbol": "LT",
+    "company": "Larsen & Toubro"
+  },
+  {
+    "symbol": "ITC",
+    "company": "ITC Limited"
+  },
+  {
+    "symbol": "BHARTIARTL",
+    "company": "Bharti Airtel Limited"
+  },
+  {
+    "symbol": "HINDUNILVR",
+    "company": "Hindustan Unilever Limited"
+  }
+]

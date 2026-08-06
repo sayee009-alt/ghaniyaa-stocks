@@ -1,6 +1,10 @@
 import json
+from pathlib import Path
 
-WATCHLIST_FILE = "../database/watchlist.json"
+# Project root (Ghaniyaa-Stocks)
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+WATCHLIST_FILE = BASE_DIR / "database" / "watchlist.json"
 
 
 def load_watchlist():
@@ -12,5 +16,7 @@ def load_watchlist():
 
 
 def save_watchlist(data):
+    WATCHLIST_FILE.parent.mkdir(exist_ok=True)
+
     with open(WATCHLIST_FILE, "w") as file:
         json.dump(data, file, indent=4)
