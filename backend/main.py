@@ -6,12 +6,20 @@ from backend.routes.watchlist import load_watchlist, save_watchlist
 from backend.routes.screener import router as screener_router
 from backend.routes.search import router as search_router
 from backend.routes.portfolio import router as portfolio_router
+from backend.routes.advisor import router as advisor_router
+from backend.routes.prediction import router as prediction_router
+from backend.routes.decision import router as decision_router
+from backend.routes.thesis import router as thesis_router
 
 app = FastAPI()
 
 app.include_router(screener_router)
 app.include_router(search_router)
 app.include_router(portfolio_router)
+app.include_router(advisor_router)
+app.include_router(prediction_router)
+app.include_router(decision_router)
+app.include_router(thesis_router)
 
 
 app.add_middleware(

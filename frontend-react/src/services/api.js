@@ -48,6 +48,11 @@ export async function getNews(symbol) {
 }
 export async function getScreener() {
   const response = await fetch(`${API_BASE}/screener`);
+
+  if (!response.ok) {
+    throw new Error(`Screener API failed: ${response.status}`);
+  }
+
   return await response.json();
 }
 export async function addPortfolio(stock) {
@@ -64,5 +69,50 @@ export async function addPortfolio(stock) {
 
 export async function getPortfolio() {
   const response = await fetch(`${API_BASE}/portfolio`);
+  return await response.json();
+}
+export async function getAdvisor() {
+  const response = await fetch(`${API_BASE}/advisor`);
+
+  if (!response.ok) {
+    throw new Error(`Advisor API failed: ${response.status}`);
+  }
+
+  return await response.json();
+}
+export async function getPrediction(symbol) {
+  const response = await fetch(
+    `http://127.0.0.1:8000/prediction/${symbol}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Prediction API failed");
+  }
+
+  return await response.json();
+}
+
+export async function getDecision(symbol) {
+  const response = await fetch(
+    `${API_BASE}/decision/${symbol}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Decision API failed");
+  }
+
+  return await response.json();
+}
+
+
+export async function getThesis(symbol) {
+  const response = await fetch(
+    `${API_BASE}/thesis/${symbol}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Thesis API failed");
+  }
+
   return await response.json();
 }

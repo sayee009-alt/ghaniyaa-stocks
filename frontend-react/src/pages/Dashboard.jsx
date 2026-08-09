@@ -15,6 +15,11 @@ import CompareChart from "../components/CompareChart";
 import PortfolioBuilder from "../components/PortfolioBuilder";
 import PortfolioCard from "../components/PortfolioCard";
 import PortfolioPieChart from "../components/PortfolioPieChart";
+import AdvisorCard from "../components/AdvisorCard";
+import PredictionCard from "../components/PredictionCard";
+import { getPrediction } from "../services/api";
+import DecisionCard from "../components/DecisionCard";
+import ThesisCard from "../components/ThesisCard";
 
 import {
   getLiveStock,
@@ -27,7 +32,9 @@ import {
   addToWatchlist,
   compareStocks,
   getPortfolio,
-  addPortfolio
+  addPortfolio,
+  getDecision,
+  getThesis
 } from "../services/api";
 
 function Dashboard() {
@@ -40,14 +47,19 @@ function Dashboard() {
   const [watchlist, setWatchlist] = useState([]);
   const [news, setNews] = useState([]);
   const [symbol1, setSymbol1] = useState("");
-const [symbol2, setSymbol2] = useState("");
-const [comparison, setComparison] = useState(null);
+  const [symbol2, setSymbol2] = useState("");
+  const [comparison, setComparison] = useState(null);
 const [portfolio, setPortfolio] = useState({
   holdings: [],
   totalInvestment: 0,
   currentValue: 0,
   profit: 0,
 });
+const [prediction, setPrediction] = useState(null);
+  const [decision, setDecision] = useState(null);
+  const [thesis, setThesis] = useState(null);
+
+
 
   async function analyzeStock(symbol) {
     try {
@@ -59,12 +71,28 @@ const [portfolio, setPortfolio] = useState({
       const scoreData = await getScore(upperSymbol);
       setScore(scoreData);
 
+
+
       const historyData = await getHistory(upperSymbol);
       console.log("History API:", historyData);
       setHistory(historyData);
 
       const summaryData = await getSummary(upperSymbol);
       setSummary(summaryData);
+
+      const predictionData = await getPrediction(upperSymbol);
+      console.log("Prediction API:", predictionData);
+      setPrediction(predictionData);
+
+      const decisionData = await getDecision(upperSymbol);
+      console.log("Decision API:", decisionData);
+      setDecision(decisionData);
+
+      const thesisData = await getThesis(upperSymbol);
+      console.log("Thesis API:", thesisData);
+      setThesis(thesisData);
+
+
 
       const newsData = await getNews(upperSymbol);
       setNews(newsData.news);
@@ -89,7 +117,7 @@ async function addPortfolioStock(stock) {
   const portfolioData = await getPortfolio();
 
   console.log(portfolioData);
-  
+
 setPortfolio(portfolioData);
 }
 
@@ -187,13 +215,18 @@ async function compare() {
     stock2={comparison?.stock2}
   />
 </div>
-<PortfolioBuilder onAdd={addPortfolioStock} />
+        <PortfolioBuilder onAdd={addPortfolioStock} />
         <div className="mt-8">
-  <PortfolioCard portfolio={portfolio} />
-</div>
-<div className="mt-8">
-  <PortfolioPieChart portfolio={portfolio} />
-</div>
+        <PortfolioCard portfolio={portfolio} />
+        </div>
+        
+        <div className="mt-8">
+        <PortfolioPieChart portfolio={portfolio} />
+        </div>
+        
+        <div className="mt-8">
+        <AdvisorCard />
+        </div>
 
         <div className="mt-8">
           <StockCard stock={stock} score={score} />
@@ -207,8 +240,18 @@ async function compare() {
            <RecommendationCard score={score} />  
         </div>
 
-        
+        <div className="mt-8">
+         <PredictionCard prediction={prediction} />
+        </div>
 
+        <div className="mt-8">
+        <DecisionCard decision={decision} />
+        </div>
+        
+        <div className="mt-8">
+        <ThesisCard thesis={thesis} />
+        </div>
+        
         <div className="mt-8">
           <SummaryCard summary={summary} />
         </div>

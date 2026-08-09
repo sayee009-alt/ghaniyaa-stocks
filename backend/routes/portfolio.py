@@ -72,6 +72,29 @@ def add_portfolio(stock: dict):
 
     portfolio = load_portfolio()
 
+    for item in portfolio:
+
+        if item["symbol"] == stock["symbol"]:
+
+            old_qty = item["quantity"]
+            new_qty = stock["quantity"]
+
+            total_qty = old_qty + new_qty
+
+            avg_price = (
+                item["buyPrice"] * old_qty +
+                stock["buyPrice"] * new_qty
+            ) / total_qty
+
+            item["quantity"] = total_qty
+            item["buyPrice"] = round(avg_price, 2)
+
+            save_portfolio(portfolio)
+
+            return {
+                "message": "Portfolio updated"
+            }
+
     portfolio.append(stock)
 
     save_portfolio(portfolio)

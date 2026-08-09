@@ -1,17 +1,12 @@
 [
     {
         "symbol": "INFY",
-        "quantity": 1,
-        "buyPrice": 1000
+        "quantity": 2,
+        "buyPrice": 1000.0
     },
     {
         "symbol": "TCS",
-        "quantity": 1,
-        "buyPrice": 1500
-    },
-    {
-        "symbol": "TCS",
-        "quantity": 1,
-        "buyPrice": 1000
+        "quantity": 5,
+        "buyPrice": 1100.0
     }
 ]

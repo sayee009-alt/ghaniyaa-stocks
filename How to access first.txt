@@ -1,0 +1,19 @@
+Open Visual Studio Code
+
+first powershell
+
+cd C:\Users\sayee\Desktop\Ghaniyaa-Stocks\frontend-react
+
+npm run dev
+
+
+
+
+second powershell
+
+
+cd C:\Users\sayee\Desktop\Ghaniyaa-Stocks
+
+.venv\Scripts\activate
+
+python -m uvicorn backend.main:app --reload

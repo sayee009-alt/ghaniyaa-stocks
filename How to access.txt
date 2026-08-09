@@ -1,5 +1,0 @@
-cd C:\Users\sayee\Desktop\Ghaniyaa-Stocks\frontend-react
-
-uvicorn main:app --reload
-
-npm run dev

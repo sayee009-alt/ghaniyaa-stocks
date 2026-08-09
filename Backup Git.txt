@@ -1,0 +1,11 @@
+Backup
+
+cd C:\Users\sayee\Desktop\Ghaniyaa-Stocks
+
+git status
+
+git add .
+
+git commit -m "Milestone 28 - Dashboard with chart, summary, financials, watchlist and Ghaniyaa Score"
+
+git push origin main
