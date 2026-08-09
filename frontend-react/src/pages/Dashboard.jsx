@@ -38,7 +38,7 @@ import {
 } from "../services/api";
 
 function Dashboard() {
-    const [screener, setScreener] = useState([]);
+  const [screener, setScreener] = useState([]);
   const [stock, setStock] = useState(null);
   const [score, setScore] = useState(null);
   const [history, setHistory] = useState(null);
@@ -55,7 +55,7 @@ const [portfolio, setPortfolio] = useState({
   currentValue: 0,
   profit: 0,
 });
-const [prediction, setPrediction] = useState(null);
+  const [prediction, setPrediction] = useState(null);
   const [decision, setDecision] = useState(null);
   const [thesis, setThesis] = useState(null);
 
@@ -70,8 +70,6 @@ const [prediction, setPrediction] = useState(null);
 
       const scoreData = await getScore(upperSymbol);
       setScore(scoreData);
-
-
 
       const historyData = await getHistory(upperSymbol);
       console.log("History API:", historyData);
@@ -91,8 +89,6 @@ const [prediction, setPrediction] = useState(null);
       const thesisData = await getThesis(upperSymbol);
       console.log("Thesis API:", thesisData);
       setThesis(thesisData);
-
-
 
       const newsData = await getNews(upperSymbol);
       setNews(newsData.news);
@@ -229,7 +225,7 @@ async function compare() {
         </div>
 
         <div className="mt-8">
-          <StockCard stock={stock} score={score} />
+        <StockCard stock={stock} score={score} />
         </div>
 
         <div className="mt-8">

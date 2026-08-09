@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
 import { getAdvisor } from "../services/api";
 
+import { Pie } from "react-chartjs-2";
+
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend
+);
+
 export default function AdvisorCard() {
   const [advisor, setAdvisor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,20 +32,32 @@ export default function AdvisorCard() {
         console.log("Advisor API:", data);
 
         setAdvisor(data);
+
       } catch (error) {
+
         console.error("Advisor Error:", error);
+
         setError(error.message);
+
       } finally {
+
         setLoading(false);
+
       }
     }
 
     loadAdvisor();
+
   }, []);
+
+  // --------------------------------
+  // Loading
+  // --------------------------------
 
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow p-6 mt-6">
+
         <h2 className="text-xl font-bold mb-4">
           🤖 AI Portfolio Advisor
         </h2>
@@ -38,57 +65,882 @@ export default function AdvisorCard() {
         <p className="text-gray-500">
           Loading AI Advisor...
         </p>
+
       </div>
     );
   }
 
+  // --------------------------------
+  // Error
+  // --------------------------------
+
   if (error) {
     return (
       <div className="bg-white rounded-xl shadow p-6 mt-6">
+
         <h2 className="text-xl font-bold mb-4">
           🤖 AI Portfolio Advisor
         </h2>
 
-        <p className="text-red-600">
+        <p className="text-red-600 font-semibold">
           Failed to load AI Advisor.
         </p>
 
         <p className="text-sm text-gray-500 mt-2">
           {error}
         </p>
+
       </div>
     );
   }
+
+  // --------------------------------
+  // No data
+  // --------------------------------
 
   if (!advisor) {
     return null;
   }
 
+   // --------------------------------
+  // Scores
+  // --------------------------------
+
+  const healthScore = Number(
+    advisor.health_score || 0
+  );
+
+  const portfolioRiskScore = Number(
+    advisor.portfolio_risk_score || 0
+  );
+
+  const sectorScore = Number(
+    advisor.sector_diversification_score || 0
+  );
+
+  // --------------------------------
+  // Portfolio Strength
+  // --------------------------------
+
+const riskSafetyScore = 100 - portfolioRiskScore;
+
+const portfolioStrength = Math.round(
+  (
+    healthScore +
+    riskSafetyScore +
+    sectorScore
+  ) / 3
+);
+
+  let portfolioStrengthLabel;
+
+  if (portfolioStrength >= 80) {
+    portfolioStrengthLabel = "Strong";
+  } else if (portfolioStrength >= 60) {
+    portfolioStrengthLabel = "Moderate";
+  } else if (portfolioStrength >= 40) {
+    portfolioStrengthLabel = "Weak";
+  } else {
+    portfolioStrengthLabel = "Very Weak";
+  }
+
+  // --------------------------------
+  // Sector data
+  // --------------------------------
+
+  const sectorLabels = Object.keys(
+    advisor.sectors || {}
+  );
+
+  const sectorValues = Object.values(
+    advisor.sectors || {}
+  ).map(
+    (value) => Number(value)
+  );
+
+  // --------------------------------
+  // Pie chart
+  // --------------------------------
+
+  const sectorChartData = {
+    labels: sectorLabels,
+
+    datasets: [
+      {
+        data: sectorValues,
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const sectorChartOptions = {
+    responsive: true,
+
+    plugins: {
+      legend: {
+        position: "bottom",
+      },
+    },
+  };
+// --------------------------------
+// Recommended Actions
+// --------------------------------
+
+const recommendedActions = [];
+
+const largestHoldingPercent = Number(
+  advisor.largest_holding_percent || 0
+);
+
+const sectorCount = Number(
+  advisor.sector_count || 0
+);
+
+const totalHoldings = Number(
+  advisor.total_holdings || 0
+);
+
+const profitPercent = Number(
+  advisor.profit_percent || 0
+);
+
+// 1. Largest holding concentration
+
+if (largestHoldingPercent >= 70) {
+
+  recommendedActions.push(
+    `Very high concentration in ${advisor.largest_holding}. Consider reducing dependence on this single holding.`
+  );
+
+} else if (largestHoldingPercent >= 50) {
+
+  recommendedActions.push(
+    `${advisor.largest_holding} represents a large portion of your portfolio. Consider reducing concentration over time.`
+  );
+
+} else if (largestHoldingPercent >= 30) {
+
+  recommendedActions.push(
+    `Monitor ${advisor.largest_holding} because it represents a significant portion of your portfolio.`
+  );
+
+}
+
+
+// 2. Sector diversification
+
+if (sectorCount === 1) {
+
+  recommendedActions.push(
+    "Your portfolio is concentrated in a single sector. Consider adding quality companies from other sectors."
+  );
+
+} else if (sectorCount === 2) {
+
+  recommendedActions.push(
+    "Your portfolio spans only two sectors. Consider gradually adding exposure to additional sectors."
+  );
+
+} else if (sectorCount < 4) {
+
+  recommendedActions.push(
+    "Consider increasing sector diversification to reduce dependence on a small number of industries."
+  );
+
+}
+
+
+// 3. Number of holdings
+
+if (totalHoldings === 1) {
+
+  recommendedActions.push(
+    "Your portfolio contains only one holding. Consider building a diversified portfolio gradually."
+  );
+
+} else if (totalHoldings < 5) {
+
+  recommendedActions.push(
+    "Your portfolio has relatively few holdings. Consider gradually adding other quality companies."
+  );
+
+}
+
+
+// 4. Negative performance
+
+if (profitPercent < 0) {
+
+  recommendedActions.push(
+    "Your portfolio is currently below its total investment. Review individual holdings and their fundamentals before adding more capital."
+  );
+
+}
+
+
+// 5. Very high portfolio risk
+
+if (advisor.portfolio_risk === "Very High") {
+
+  recommendedActions.push(
+    "Portfolio risk is very high. Prioritize diversification and position sizing before increasing exposure."
+  );
+
+}
+
+
+// 6. Healthy portfolio
+
+if (recommendedActions.length === 0) {
+
+  recommendedActions.push(
+    "Your portfolio structure appears reasonably balanced. Continue monitoring diversification, risk and long-term performance."
+  );
+
+}
+
+  // --------------------------------
+  // Main UI
+  // --------------------------------
+
   return (
     <div className="bg-white rounded-xl shadow p-6 mt-6">
 
-      <h2 className="text-xl font-bold mb-4">
-        🤖 AI Portfolio Advisor
-      </h2>
+      {/* Header */}
 
-      <p>
-        <strong>Health Score:</strong>{" "}
-        {advisor.health_score}/100
+      <div className="flex items-center justify-between mb-6">
+
+        <h2 className="text-2xl font-bold">
+          🤖 AI Portfolio Advisor
+        </h2>
+
+        <span className="text-sm text-gray-500">
+          AI Portfolio Analysis
+        </span>
+
+      </div>
+
+      {/* Portfolio Strength */}
+
+<div className="border rounded-xl p-5 mb-6 bg-gray-50">
+
+  <div className="flex items-center justify-between">
+
+    <div>
+
+      <p className="text-gray-500">
+        Overall Portfolio Strength
       </p>
 
-      <p>
-        <strong>Risk:</strong>{" "}
-        {advisor.risk}
+      <p className="text-3xl font-bold mt-1">
+        {portfolioStrength}/100
       </p>
 
-      <p>
-        <strong>Diversification:</strong>{" "}
+    </div>
+
+    <div className="text-right">
+
+      <p className="text-sm text-gray-500">
+        Rating
+      </p>
+
+      <p className="text-2xl font-bold">
+        {portfolioStrengthLabel}
+      </p>
+
+    </div>
+
+  </div>
+
+  {/* Strength Bar */}
+
+  <div className="w-full bg-gray-200 rounded-full h-4 mt-4">
+
+    <div
+      className={`h-4 rounded-full ${
+        portfolioStrength >= 80
+          ? "bg-green-500"
+          : portfolioStrength >= 60
+          ? "bg-yellow-500"
+          : portfolioStrength >= 40
+          ? "bg-orange-500"
+          : "bg-red-500"
+      }`}
+      style={{
+        width: `${portfolioStrength}%`,
+      }}
+    />
+
+  </div>
+
+  {/* Strength Explanation */}
+
+  <div className="mt-4">
+
+    {portfolioStrength >= 80 && (
+      <p className="text-green-700 text-sm">
+        ✅ Your portfolio has a strong overall structure.
+      </p>
+    )}
+
+    {portfolioStrength >= 60 &&
+      portfolioStrength < 80 && (
+        <p className="text-yellow-700 text-sm">
+          ⚡ Your portfolio is reasonably structured,
+          but some improvements may be useful.
+        </p>
+      )}
+
+    {portfolioStrength >= 40 &&
+      portfolioStrength < 60 && (
+        <p className="text-orange-700 text-sm">
+          ⚠️ Your portfolio has weaknesses that should
+          be addressed.
+        </p>
+      )}
+
+    {portfolioStrength < 40 && (
+      <p className="text-red-700 text-sm">
+        🚨 Your portfolio has significant structural
+        weaknesses and concentration risk.
+      </p>
+    )}
+
+  </div>
+
+</div>
+
+      {/* Score Cards */}
+
+      <div className="grid md:grid-cols-3 gap-4">
+
+        <div className="border rounded-xl p-4">
+
+          <p className="text-gray-500">
+            Portfolio Health
+          </p>
+
+          <p className="text-3xl font-bold mt-2">
+            {healthScore}/100
+          </p>
+
+        </div>
+
+
+        <div className="border rounded-xl p-4">
+
+          <p className="text-gray-500">
+            Risk Score
+          </p>
+          
+
+          <p className="text-3xl font-bold mt-2">
+            {portfolioRiskScore}/100
+          </p>
+
+          <p className="text-sm text-gray-500 mt-1">
+           Higher score = higher risk
+          </p>
+
+        </div>
+
+
+        <div className="border rounded-xl p-4">
+
+          <p className="text-gray-500">
+            Sector Diversification
+          </p>
+
+          <p className="text-3xl font-bold mt-2">
+            {sectorScore}/100
+          </p>
+
+        </div>
+
+      </div>
+
+
+      {/* Risk Information */}
+
+      <div className="grid md:grid-cols-3 gap-4 mt-6">
+
+        <div className="border rounded-xl p-4">
+
+          <p className="text-gray-500">
+            Risk Level
+          </p>
+
+          <p className="text-xl font-bold mt-2">
+            {advisor.risk}
+          </p>
+
+        </div>
+
+
+        <div className="border rounded-xl p-4">
+
+          <p className="text-gray-500">
+            Portfolio Risk
+          </p>
+
+          <p className="text-xl font-bold mt-2">
+            {advisor.portfolio_risk}
+          </p>
+
+        </div>
+
+
+        <div className="border rounded-xl p-4">
+
+          <p className="text-gray-500">
+            Diversification
+          </p>
+
+          <p className="text-xl font-bold mt-2">
+            {advisor.diversification}
+          </p>
+
+        </div>
+
+      </div>
+
+      {/* Risk Breakdown */}
+
+<div className="mt-6">
+
+  <h3 className="text-lg font-bold mb-4">
+    ⚠️ Portfolio Risk Breakdown
+  </h3>
+
+  <div className="grid md:grid-cols-3 gap-4">
+
+    {/* Holding Concentration */}
+
+    <div className="border rounded-xl p-4">
+
+      <p className="text-gray-500">
+        Largest Holding
+      </p>
+
+      <p className="text-xl font-bold mt-2">
+        {advisor.largest_holding}
+      </p>
+
+      <p className="text-sm text-gray-500 mt-1">
+        {Number(
+          advisor.largest_holding_percent || 0
+        ).toFixed(2)}% of portfolio
+      </p>
+
+    </div>
+
+
+    {/* Sector Concentration */}
+
+    <div className="border rounded-xl p-4">
+
+      <p className="text-gray-500">
+        Largest Sector
+      </p>
+
+      <p className="text-xl font-bold mt-2">
+
+        {Object.entries(
+          advisor.sectors || {}
+        ).length > 0
+          ? Object.entries(
+              advisor.sectors
+            ).sort(
+              (a, b) => b[1] - a[1]
+            )[0][0]
+          : "Unknown"}
+
+      </p>
+
+      <p className="text-sm text-gray-500 mt-1">
+
+        {Object.entries(
+          advisor.sectors || {}
+        ).length > 0
+          ? `${Object.entries(
+              advisor.sectors
+            ).sort(
+              (a, b) => b[1] - a[1]
+            )[0][1]}% of portfolio`
+          : "No sector data"}
+
+      </p>
+
+    </div>
+
+
+    {/* Sector Count */}
+
+    <div className="border rounded-xl p-4">
+
+      <p className="text-gray-500">
+        Sectors
+      </p>
+
+      <p className="text-xl font-bold mt-2">
+        {advisor.sector_count}
+      </p>
+
+      <p className="text-sm text-gray-500 mt-1">
         {advisor.diversification}
       </p>
 
-      <p className="mt-3">
-        {advisor.recommendation}
+    </div>
+
+  </div>
+
+</div>
+
+{/* Risk Warning */}
+
+<div className="mt-6">
+
+  {advisor.portfolio_risk === "Very High" && (
+
+    <div className="bg-red-50 border border-red-200 rounded-xl p-5">
+
+      <h3 className="font-bold text-red-700">
+        🚨 High Concentration Risk
+      </h3>
+
+      <p className="text-red-600 mt-2">
+        Your portfolio has significant concentration risk.
+        Consider spreading investments across different
+        stocks and sectors.
       </p>
+
+    </div>
+
+  )}
+
+  {advisor.portfolio_risk === "High" && (
+
+    <div className="bg-orange-50 border border-orange-200 rounded-xl p-5">
+
+      <h3 className="font-bold text-orange-700">
+        ⚠️ Elevated Portfolio Risk
+      </h3>
+
+      <p className="text-orange-600 mt-2">
+        Your portfolio has noticeable concentration.
+        Consider improving diversification.
+      </p>
+
+    </div>
+
+  )}
+
+  {advisor.portfolio_risk === "Medium" && (
+
+    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5">
+
+      <h3 className="font-bold text-yellow-700">
+        ⚡ Moderate Portfolio Risk
+      </h3>
+
+      <p className="text-yellow-700 mt-2">
+        Your portfolio has moderate concentration.
+        Continue monitoring diversification.
+      </p>
+
+    </div>
+
+  )}
+
+  {advisor.portfolio_risk === "Low" && (
+
+    <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+
+      <h3 className="font-bold text-green-700">
+        ✅ Healthy Portfolio Structure
+      </h3>
+
+      <p className="text-green-700 mt-2">
+        Your portfolio appears reasonably diversified.
+      </p>
+
+    </div>
+
+  )}
+
+</div>
+
+
+      {/* Holdings */}
+
+      <div className="grid md:grid-cols-3 gap-4 mt-6">
+
+        <div className="border rounded-xl p-4">
+
+          <p className="text-gray-500">
+            Largest Holding
+          </p>
+
+          <p className="text-xl font-bold mt-2">
+            {advisor.largest_holding}
+          </p>
+
+        </div>
+
+
+        <div className="border rounded-xl p-4">
+
+          <p className="text-gray-500">
+            Largest Holding %
+          </p>
+
+          <p className="text-xl font-bold mt-2">
+            {advisor.largest_holding_percent}%
+          </p>
+
+        </div>
+
+
+        <div className="border rounded-xl p-4">
+
+          <p className="text-gray-500">
+            Total Holdings
+          </p>
+
+          <p className="text-xl font-bold mt-2">
+            {advisor.total_holdings}
+          </p>
+
+        </div>
+
+      </div>
+
+
+      {/* Portfolio Performance */}
+
+      <div className="mt-6">
+
+        <h3 className="text-lg font-bold mb-4">
+          📊 Portfolio Performance
+        </h3>
+
+        <div className="grid md:grid-cols-4 gap-4">
+
+          <div className="border rounded-xl p-4">
+
+            <p className="text-gray-500">
+              Investment
+            </p>
+
+            <p className="text-xl font-bold mt-2">
+              ₹
+              {Number(
+                advisor.total_investment || 0
+              ).toFixed(2)}
+            </p>
+
+          </div>
+
+
+          <div className="border rounded-xl p-4">
+
+            <p className="text-gray-500">
+              Current Value
+            </p>
+
+            <p className="text-xl font-bold mt-2">
+              ₹
+              {Number(
+                advisor.current_value || 0
+              ).toFixed(2)}
+            </p>
+
+          </div>
+
+
+          <div className="border rounded-xl p-4">
+
+            <p className="text-gray-500">
+              Profit
+            </p>
+
+            <p className="text-xl font-bold mt-2">
+              ₹
+              {Number(
+                advisor.profit || 0
+              ).toFixed(2)}
+            </p>
+
+          </div>
+
+
+          <div className="border rounded-xl p-4">
+
+            <p className="text-gray-500">
+              Profit %
+            </p>
+
+            <p className="text-xl font-bold mt-2">
+              {Number(
+                advisor.profit_percent || 0
+              ).toFixed(2)}
+              %
+            </p>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      {/* Sector Breakdown */}
+
+      <div className="mt-6">
+
+        <h3 className="text-lg font-bold mb-4">
+          🏭 Sector Allocation
+        </h3>
+
+        <div className="space-y-3">
+
+          {advisor.sectors &&
+            Object.entries(
+              advisor.sectors
+            ).map(
+              ([sector, percentage]) => (
+
+                <div key={sector}>
+
+                  <div className="flex justify-between mb-1">
+
+                    <span className="font-medium">
+                      {sector}
+                    </span>
+
+                    <span className="font-bold">
+                      {percentage}%
+                    </span>
+
+                  </div>
+
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+
+                    <div
+                      className="bg-blue-600 h-3 rounded-full"
+                      style={{
+                        width: `${percentage}%`,
+                      }}
+                    />
+
+                  </div>
+
+                </div>
+
+              )
+            )}
+
+        </div>
+
+      </div>
+
+
+      {/* Sector Pie Chart */}
+
+      {sectorLabels.length > 0 && (
+
+        <div className="mt-8">
+
+          <h3 className="text-lg font-bold mb-4">
+            📈 Sector Allocation Chart
+          </h3>
+
+          <div className="max-w-md mx-auto">
+
+            <Pie
+              data={sectorChartData}
+              options={sectorChartOptions}
+            />
+
+          </div>
+
+        </div>
+
+      )}
+
+
+      {/* Recommendation */}
+
+      <div className="mt-8 bg-gray-50 rounded-xl p-5">
+
+        <h3 className="text-lg font-bold mb-2">
+          💡 AI Recommendation
+        </h3>
+
+        <p className="text-gray-700">
+          {advisor.recommendation}
+        </p>
+
+      </div>
+
+
+      {/* Recommended Actions */}
+
+      <div className="mt-6 border rounded-xl p-5">
+
+        <h3 className="text-lg font-bold mb-4">
+          🎯 Recommended Actions
+        </h3>
+
+        <div className="space-y-3">
+
+          {recommendedActions.map(
+            (action, index) => (
+
+              <div
+                key={index}
+                className="flex items-start gap-3 bg-gray-50 rounded-lg p-4"
+              >
+
+                <div
+  key={index}
+  className={`flex items-start gap-3 rounded-lg p-4 ${
+    index === 0
+      ? "bg-red-50 border border-red-200"
+      : "bg-gray-50"
+  }`}
+>
+
+  <div
+    className={`font-bold ${
+      index === 0
+        ? "text-red-600"
+        : "text-blue-600"
+    }`}
+  >
+    {index + 1}.
+  </div>
+
+  <p
+    className={
+      index === 0
+        ? "text-red-700 font-medium"
+        : "text-gray-700"
+    }
+  >
+    {action}
+  </p>
+
+</div>
+
+              </div>
+
+            )
+          )}
+
+        </div>
+
+      </div>
 
     </div>
   );
