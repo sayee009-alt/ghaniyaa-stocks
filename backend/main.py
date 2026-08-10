@@ -10,8 +10,17 @@ from backend.routes.advisor import router as advisor_router
 from backend.routes.prediction import router as prediction_router
 from backend.routes.decision import router as decision_router
 from backend.routes.thesis import router as thesis_router
+from backend.routes.universe import router as universe_router
+from backend.services.universe_sync import sync_stock_universe
 
 app = FastAPI()
+
+sync_result = sync_stock_universe()
+
+print(
+    "Ghaniyaa Universe Sync:",
+    sync_result
+)
 
 app.include_router(screener_router)
 app.include_router(search_router)
@@ -20,7 +29,7 @@ app.include_router(advisor_router)
 app.include_router(prediction_router)
 app.include_router(decision_router)
 app.include_router(thesis_router)
-
+app.include_router(universe_router)
 
 app.add_middleware(
     CORSMiddleware,

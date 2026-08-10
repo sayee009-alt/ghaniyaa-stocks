@@ -8,7 +8,6 @@ import Watchlist from "../components/Watchlist";
 import FinancialCard from "../components/FinancialCard";
 import RecommendationCard from "../components/RecommendationCard";
 import NewsCard from "../components/NewsCard";
-import { getNews } from "../services/api";
 import ScreenerTable from "../components/ScreenerTable";
 import CompareCard from "../components/CompareCard";
 import CompareChart from "../components/CompareChart";
@@ -17,7 +16,6 @@ import PortfolioCard from "../components/PortfolioCard";
 import PortfolioPieChart from "../components/PortfolioPieChart";
 import AdvisorCard from "../components/AdvisorCard";
 import PredictionCard from "../components/PredictionCard";
-import { getPrediction } from "../services/api";
 import DecisionCard from "../components/DecisionCard";
 import ThesisCard from "../components/ThesisCard";
 
@@ -33,8 +31,10 @@ import {
   compareStocks,
   getPortfolio,
   addPortfolio,
+  getPrediction,
   getDecision,
-  getThesis
+  getThesis,
+  getNews,
 } from "../services/api";
 
 function Dashboard() {

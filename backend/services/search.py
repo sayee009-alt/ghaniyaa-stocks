@@ -1,24 +1,70 @@
-import json
-from pathlib import Path
+from backend.stock_registry import (
+    get_all_stocks,
+    normalize_symbol,
+)
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-STOCKS_FILE = BASE_DIR / "database" / "stocks.json"
-print("Stocks file:", STOCKS_FILE)
-print("Exists:", STOCKS_FILE.exists())
 
 def search_stock(query: str):
-    query = query.lower()
 
-    with open(STOCKS_FILE, "r") as f:
-        stocks = json.load(f)
+    query = normalize_symbol(query)
+
+    if not query:
+        return []
+
+    stocks = get_all_stocks()
 
     results = []
 
-    for stock in stocks:
-        if (
-            query in stock["symbol"].lower()
-            or query in stock["company"].lower()
-        ):
-            results.append(stock)
+    for symbol, info in stocks.items():
+
+        company = info.get(
+            "company",
+            ""
+        )
+
+        sector = info.get(
+            "sector",
+            "Unknown"
+        )
+
+        # ---------------------------------
+        # Symbol match
+        # ---------------------------------
+
+        if query in symbol.upper():
+
+            results.append({
+                "symbol": symbol,
+                "company": company,
+                "sector": sector
+            })
+
+            continue
+
+        # ---------------------------------
+        # Company name match
+        # ---------------------------------
+
+        if query.lower() in company.lower():
+
+            results.append({
+                "symbol": symbol,
+                "company": company,
+                "sector": sector
+            })
+
+            continue
+
+        # ---------------------------------
+        # Sector match
+        # ---------------------------------
+
+        if query.lower() in sector.lower():
+
+            results.append({
+                "symbol": symbol,
+                "company": company,
+                "sector": sector
+            })
 
     return results

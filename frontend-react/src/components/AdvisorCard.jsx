@@ -21,6 +21,10 @@ export default function AdvisorCard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // --------------------------------
+  // Load Advisor
+  // --------------------------------
+
   useEffect(() => {
     async function loadAdvisor() {
       try {
@@ -32,22 +36,15 @@ export default function AdvisorCard() {
         console.log("Advisor API:", data);
 
         setAdvisor(data);
-
       } catch (error) {
-
         console.error("Advisor Error:", error);
-
         setError(error.message);
-
       } finally {
-
         setLoading(false);
-
       }
     }
 
     loadAdvisor();
-
   }, []);
 
   // --------------------------------
@@ -57,7 +54,6 @@ export default function AdvisorCard() {
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow p-6 mt-6">
-
         <h2 className="text-xl font-bold mb-4">
           🤖 AI Portfolio Advisor
         </h2>
@@ -65,7 +61,6 @@ export default function AdvisorCard() {
         <p className="text-gray-500">
           Loading AI Advisor...
         </p>
-
       </div>
     );
   }
@@ -77,7 +72,6 @@ export default function AdvisorCard() {
   if (error) {
     return (
       <div className="bg-white rounded-xl shadow p-6 mt-6">
-
         <h2 className="text-xl font-bold mb-4">
           🤖 AI Portfolio Advisor
         </h2>
@@ -89,21 +83,20 @@ export default function AdvisorCard() {
         <p className="text-sm text-gray-500 mt-2">
           {error}
         </p>
-
       </div>
     );
   }
 
   // --------------------------------
-  // No data
+  // No Data
   // --------------------------------
 
   if (!advisor) {
     return null;
   }
 
-   // --------------------------------
-  // Scores
+  // --------------------------------
+  // Safe Numeric Values
   // --------------------------------
 
   const healthScore = Number(
@@ -118,21 +111,43 @@ export default function AdvisorCard() {
     advisor.sector_diversification_score || 0
   );
 
+  const largestHoldingPercent = Number(
+    advisor.largest_holding_percent || 0
+  );
+
+  const sectorCount = Number(
+    advisor.sector_count || 0
+  );
+
+  const totalHoldings = Number(
+    advisor.total_holdings || 0
+  );
+
+  const profitPercent = Number(
+    advisor.profit_percent || 0
+  );
+
   // --------------------------------
   // Portfolio Strength
   // --------------------------------
+  //
+  // IMPORTANT:
+  // Risk Score is:
+  // 0   = very high risk
+  // 100 = low risk
+  //
+  // Therefore we use the risk score directly.
+  // --------------------------------
 
-const riskSafetyScore = 100 - portfolioRiskScore;
+  const portfolioStrength = Math.round(
+    (
+      healthScore +
+      portfolioRiskScore +
+      sectorScore
+    ) / 3
+  );
 
-const portfolioStrength = Math.round(
-  (
-    healthScore +
-    riskSafetyScore +
-    sectorScore
-  ) / 3
-);
-
-  let portfolioStrengthLabel;
+  let portfolioStrengthLabel = "Very Weak";
 
   if (portfolioStrength >= 80) {
     portfolioStrengthLabel = "Strong";
@@ -140,12 +155,45 @@ const portfolioStrength = Math.round(
     portfolioStrengthLabel = "Moderate";
   } else if (portfolioStrength >= 40) {
     portfolioStrengthLabel = "Weak";
-  } else {
-    portfolioStrengthLabel = "Very Weak";
   }
 
   // --------------------------------
-  // Sector data
+  // Strength Color
+  // --------------------------------
+
+  let strengthColor = "bg-red-500";
+  let strengthTextColor = "text-red-700";
+
+  if (portfolioStrength >= 80) {
+    strengthColor = "bg-green-500";
+    strengthTextColor = "text-green-700";
+  } else if (portfolioStrength >= 60) {
+    strengthColor = "bg-yellow-500";
+    strengthTextColor = "text-yellow-700";
+  } else if (portfolioStrength >= 40) {
+    strengthColor = "bg-orange-500";
+    strengthTextColor = "text-orange-700";
+  }
+
+  // --------------------------------
+  // Risk Gauge
+  // --------------------------------
+
+  let riskGaugeColor = "bg-red-500";
+
+  if (portfolioRiskScore >= 80) {
+    riskGaugeColor = "bg-green-500";
+  } else if (portfolioRiskScore >= 60) {
+    riskGaugeColor = "bg-yellow-500";
+  } else if (portfolioRiskScore >= 40) {
+    riskGaugeColor = "bg-orange-500";
+  }
+
+  const riskGaugeLabel =
+    advisor.portfolio_risk || "Unknown Risk";
+
+  // --------------------------------
+  // Sector Data
   // --------------------------------
 
   const sectorLabels = Object.keys(
@@ -154,12 +202,32 @@ const portfolioStrength = Math.round(
 
   const sectorValues = Object.values(
     advisor.sectors || {}
-  ).map(
-    (value) => Number(value)
-  );
+  ).map((value) => Number(value));
 
   // --------------------------------
-  // Pie chart
+  // Largest Sector
+  // --------------------------------
+
+  const sectorEntries = Object.entries(
+    advisor.sectors || {}
+  );
+
+  let largestSector = "Unknown";
+  let largestSectorPercentage = 0;
+
+  if (sectorEntries.length > 0) {
+    const sortedSectors = [...sectorEntries].sort(
+      (a, b) => Number(b[1]) - Number(a[1])
+    );
+
+    largestSector = sortedSectors[0][0];
+    largestSectorPercentage = Number(
+      sortedSectors[0][1]
+    );
+  }
+
+  // --------------------------------
+  // Pie Chart
   // --------------------------------
 
   const sectorChartData = {
@@ -182,122 +250,90 @@ const portfolioStrength = Math.round(
       },
     },
   };
-// --------------------------------
-// Recommended Actions
-// --------------------------------
 
-const recommendedActions = [];
+  // --------------------------------
+  // Recommended Actions
+  // --------------------------------
 
-const largestHoldingPercent = Number(
-  advisor.largest_holding_percent || 0
-);
+  const recommendedActions = [];
 
-const sectorCount = Number(
-  advisor.sector_count || 0
-);
+  // 1. Largest holding concentration
 
-const totalHoldings = Number(
-  advisor.total_holdings || 0
-);
+  if (largestHoldingPercent >= 70) {
+    recommendedActions.push(
+      `🚨 Very high concentration in ${advisor.largest_holding}. This holding represents ${largestHoldingPercent.toFixed(
+        2
+      )}% of your portfolio. Consider gradually reducing dependence on this single holding.`
+    );
+  } else if (largestHoldingPercent >= 50) {
+    recommendedActions.push(
+      `⚠️ ${advisor.largest_holding} represents ${largestHoldingPercent.toFixed(
+        2
+      )}% of your portfolio. Consider reducing concentration over time.`
+    );
+  } else if (largestHoldingPercent >= 30) {
+    recommendedActions.push(
+      `Monitor ${advisor.largest_holding} because it represents ${largestHoldingPercent.toFixed(
+        2
+      )}% of your portfolio.`
+    );
+  }
 
-const profitPercent = Number(
-  advisor.profit_percent || 0
-);
+  // 2. Sector diversification
 
-// 1. Largest holding concentration
+  if (sectorCount === 1) {
+    recommendedActions.push(
+      `🏭 Your portfolio is completely concentrated in ${largestSector}. Consider gradually adding quality companies from other sectors.`
+    );
+  } else if (sectorCount === 2) {
+    recommendedActions.push(
+      "🏭 Your portfolio spans only two sectors. Consider gradually adding exposure to additional sectors."
+    );
+  } else if (sectorCount < 4) {
+    recommendedActions.push(
+      "🏭 Consider increasing sector diversification to reduce dependence on a small number of industries."
+    );
+  }
 
-if (largestHoldingPercent >= 70) {
+  // 3. Number of holdings
 
-  recommendedActions.push(
-    `Very high concentration in ${advisor.largest_holding}. Consider reducing dependence on this single holding.`
-  );
+  if (totalHoldings === 1) {
+    recommendedActions.push(
+      "📊 Your portfolio contains only one holding. Consider building a diversified portfolio gradually."
+    );
+  } else if (totalHoldings < 5) {
+    recommendedActions.push(
+      `📊 Your portfolio has only ${totalHoldings} holdings. Consider gradually adding other quality companies.`
+    );
+  }
 
-} else if (largestHoldingPercent >= 50) {
+  // 4. Negative performance
 
-  recommendedActions.push(
-    `${advisor.largest_holding} represents a large portion of your portfolio. Consider reducing concentration over time.`
-  );
+  if (profitPercent < 0) {
+    recommendedActions.push(
+      "📉 Your portfolio is currently below its total investment. Review individual holdings and their fundamentals before adding more capital."
+    );
+  }
 
-} else if (largestHoldingPercent >= 30) {
+  // 5. Very high portfolio risk
 
-  recommendedActions.push(
-    `Monitor ${advisor.largest_holding} because it represents a significant portion of your portfolio.`
-  );
+  if (advisor.portfolio_risk === "Very High") {
+    recommendedActions.push(
+      "🚨 Portfolio risk is very high. Prioritize diversification and position sizing before increasing exposure."
+    );
+  } else if (advisor.portfolio_risk === "High") {
+    recommendedActions.push(
+      "⚠️ Portfolio risk is high. Consider improving diversification and reducing excessive concentration."
+    );
+  }
 
-}
+  // 6. Healthy portfolio
 
-
-// 2. Sector diversification
-
-if (sectorCount === 1) {
-
-  recommendedActions.push(
-    "Your portfolio is concentrated in a single sector. Consider adding quality companies from other sectors."
-  );
-
-} else if (sectorCount === 2) {
-
-  recommendedActions.push(
-    "Your portfolio spans only two sectors. Consider gradually adding exposure to additional sectors."
-  );
-
-} else if (sectorCount < 4) {
-
-  recommendedActions.push(
-    "Consider increasing sector diversification to reduce dependence on a small number of industries."
-  );
-
-}
-
-
-// 3. Number of holdings
-
-if (totalHoldings === 1) {
-
-  recommendedActions.push(
-    "Your portfolio contains only one holding. Consider building a diversified portfolio gradually."
-  );
-
-} else if (totalHoldings < 5) {
-
-  recommendedActions.push(
-    "Your portfolio has relatively few holdings. Consider gradually adding other quality companies."
-  );
-
-}
-
-
-// 4. Negative performance
-
-if (profitPercent < 0) {
-
-  recommendedActions.push(
-    "Your portfolio is currently below its total investment. Review individual holdings and their fundamentals before adding more capital."
-  );
-
-}
-
-
-// 5. Very high portfolio risk
-
-if (advisor.portfolio_risk === "Very High") {
-
-  recommendedActions.push(
-    "Portfolio risk is very high. Prioritize diversification and position sizing before increasing exposure."
-  );
-
-}
-
-
-// 6. Healthy portfolio
-
-if (recommendedActions.length === 0) {
-
-  recommendedActions.push(
-    "Your portfolio structure appears reasonably balanced. Continue monitoring diversification, risk and long-term performance."
-  );
-
-}
+  if (recommendedActions.length === 0) {
+    recommendedActions.push(
+      "✅ Your portfolio structure appears reasonably balanced. Continue monitoring diversification, risk and long-term performance."
+    );
+  }
 
   // --------------------------------
   // Main UI
@@ -306,7 +342,9 @@ if (recommendedActions.length === 0) {
   return (
     <div className="bg-white rounded-xl shadow p-6 mt-6">
 
+      {/* -------------------------------- */}
       {/* Header */}
+      {/* -------------------------------- */}
 
       <div className="flex items-center justify-between mb-6">
 
@@ -320,99 +358,86 @@ if (recommendedActions.length === 0) {
 
       </div>
 
+      {/* -------------------------------- */}
       {/* Portfolio Strength */}
+      {/* -------------------------------- */}
 
-<div className="border rounded-xl p-5 mb-6 bg-gray-50">
+      <div className="border rounded-xl p-5 mb-6 bg-gray-50">
 
-  <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
 
-    <div>
+          <div>
 
-      <p className="text-gray-500">
-        Overall Portfolio Strength
-      </p>
+            <p className="text-gray-500">
+              Overall Portfolio Strength
+            </p>
 
-      <p className="text-3xl font-bold mt-1">
-        {portfolioStrength}/100
-      </p>
+            <p className="text-3xl font-bold mt-1">
+              {portfolioStrength}/100
+            </p>
 
-    </div>
+          </div>
 
-    <div className="text-right">
+          <div className="text-right">
 
-      <p className="text-sm text-gray-500">
-        Rating
-      </p>
+            <p className="text-sm text-gray-500">
+              Rating
+            </p>
 
-      <p className="text-2xl font-bold">
-        {portfolioStrengthLabel}
-      </p>
+            <p className="text-2xl font-bold">
+              {portfolioStrengthLabel}
+            </p>
 
-    </div>
+          </div>
 
-  </div>
+        </div>
 
-  {/* Strength Bar */}
+        {/* Strength Bar */}
 
-  <div className="w-full bg-gray-200 rounded-full h-4 mt-4">
+        <div className="w-full bg-gray-200 rounded-full h-4 mt-4">
 
-    <div
-      className={`h-4 rounded-full ${
-        portfolioStrength >= 80
-          ? "bg-green-500"
-          : portfolioStrength >= 60
-          ? "bg-yellow-500"
-          : portfolioStrength >= 40
-          ? "bg-orange-500"
-          : "bg-red-500"
-      }`}
-      style={{
-        width: `${portfolioStrength}%`,
-      }}
-    />
+          <div
+            className={`${strengthColor} h-4 rounded-full transition-all duration-500`}
+            style={{
+              width: `${portfolioStrength}%`,
+            }}
+          />
 
-  </div>
+        </div>
 
-  {/* Strength Explanation */}
+        {/* Explanation */}
 
-  <div className="mt-4">
+        <div className="mt-4">
 
-    {portfolioStrength >= 80 && (
-      <p className="text-green-700 text-sm">
-        ✅ Your portfolio has a strong overall structure.
-      </p>
-    )}
+          <p
+            className={`text-sm font-medium ${strengthTextColor}`}
+          >
+            {portfolioStrength >= 80 &&
+              "✅ Your portfolio has a strong overall structure."}
 
-    {portfolioStrength >= 60 &&
-      portfolioStrength < 80 && (
-        <p className="text-yellow-700 text-sm">
-          ⚡ Your portfolio is reasonably structured,
-          but some improvements may be useful.
-        </p>
-      )}
+            {portfolioStrength >= 60 &&
+              portfolioStrength < 80 &&
+              "⚡ Your portfolio is reasonably structured, but some improvements may be useful."}
 
-    {portfolioStrength >= 40 &&
-      portfolioStrength < 60 && (
-        <p className="text-orange-700 text-sm">
-          ⚠️ Your portfolio has weaknesses that should
-          be addressed.
-        </p>
-      )}
+            {portfolioStrength >= 40 &&
+              portfolioStrength < 60 &&
+              "⚠️ Your portfolio has weaknesses that should be addressed."}
 
-    {portfolioStrength < 40 && (
-      <p className="text-red-700 text-sm">
-        🚨 Your portfolio has significant structural
-        weaknesses and concentration risk.
-      </p>
-    )}
+            {portfolioStrength < 40 &&
+              "🚨 Your portfolio has significant structural weaknesses and concentration risk."}
+          </p>
 
-  </div>
+        </div>
 
-</div>
+      </div>
 
+      {/* -------------------------------- */}
       {/* Score Cards */}
+      {/* -------------------------------- */}
 
       <div className="grid md:grid-cols-3 gap-4">
+
+        {/* Health */}
 
         <div className="border rounded-xl p-4">
 
@@ -424,26 +449,31 @@ if (recommendedActions.length === 0) {
             {healthScore}/100
           </p>
 
+          <p className="text-sm text-gray-500 mt-1">
+            Overall portfolio condition
+          </p>
+
         </div>
 
+        {/* Risk */}
 
         <div className="border rounded-xl p-4">
 
           <p className="text-gray-500">
-            Risk Score
+            Portfolio Risk Score
           </p>
-          
 
           <p className="text-3xl font-bold mt-2">
             {portfolioRiskScore}/100
           </p>
 
           <p className="text-sm text-gray-500 mt-1">
-           Higher score = higher risk
+            Higher score = lower risk
           </p>
 
         </div>
 
+        {/* Diversification */}
 
         <div className="border rounded-xl p-4">
 
@@ -455,12 +485,78 @@ if (recommendedActions.length === 0) {
             {sectorScore}/100
           </p>
 
+          <p className="text-sm text-gray-500 mt-1">
+            Sector diversification quality
+          </p>
+
         </div>
 
       </div>
 
+      {/* -------------------------------- */}
+      {/* Risk Gauge */}
+      {/* -------------------------------- */}
 
+      <div className="border rounded-xl p-5 mt-6">
+
+        <div className="flex items-center justify-between">
+
+          <div>
+
+            <p className="text-gray-500">
+              Portfolio Risk Level
+            </p>
+
+            <p className="text-2xl font-bold mt-1">
+              {riskGaugeLabel}
+            </p>
+
+          </div>
+
+          <div className="text-right">
+
+            <p className="text-3xl font-bold">
+              {portfolioRiskScore}/100
+            </p>
+
+            <p className="text-sm text-gray-500">
+              Risk Safety Score
+            </p>
+
+          </div>
+
+        </div>
+
+        {/* Gauge */}
+
+        <div className="w-full bg-gray-200 rounded-full h-4 mt-4">
+
+          <div
+            className={`${riskGaugeColor} h-4 rounded-full transition-all duration-500`}
+            style={{
+              width: `${portfolioRiskScore}%`,
+            }}
+          />
+
+        </div>
+
+        <div className="flex justify-between text-xs text-gray-500 mt-2">
+
+          <span>Very High Risk</span>
+
+          <span>High</span>
+
+          <span>Medium</span>
+
+          <span>Low Risk</span>
+
+        </div>
+
+      </div>
+
+      {/* -------------------------------- */}
       {/* Risk Information */}
+      {/* -------------------------------- */}
 
       <div className="grid md:grid-cols-3 gap-4 mt-6">
 
@@ -476,7 +572,6 @@ if (recommendedActions.length === 0) {
 
         </div>
 
-
         <div className="border rounded-xl p-4">
 
           <p className="text-gray-500">
@@ -488,7 +583,6 @@ if (recommendedActions.length === 0) {
           </p>
 
         </div>
-
 
         <div className="border rounded-xl p-4">
 
@@ -504,174 +598,159 @@ if (recommendedActions.length === 0) {
 
       </div>
 
+      {/* -------------------------------- */}
       {/* Risk Breakdown */}
+      {/* -------------------------------- */}
 
-<div className="mt-6">
+      <div className="mt-6">
 
-  <h3 className="text-lg font-bold mb-4">
-    ⚠️ Portfolio Risk Breakdown
-  </h3>
+        <h3 className="text-lg font-bold mb-4">
+          ⚠️ Portfolio Risk Breakdown
+        </h3>
 
-  <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
 
-    {/* Holding Concentration */}
+          {/* Largest Holding */}
 
-    <div className="border rounded-xl p-4">
+          <div className="border rounded-xl p-4">
 
-      <p className="text-gray-500">
-        Largest Holding
-      </p>
+            <p className="text-gray-500">
+              Largest Holding
+            </p>
 
-      <p className="text-xl font-bold mt-2">
-        {advisor.largest_holding}
-      </p>
+            <p className="text-xl font-bold mt-2">
+              {advisor.largest_holding}
+            </p>
 
-      <p className="text-sm text-gray-500 mt-1">
-        {Number(
-          advisor.largest_holding_percent || 0
-        ).toFixed(2)}% of portfolio
-      </p>
+            <p className="text-sm text-gray-500 mt-1">
+              {largestHoldingPercent.toFixed(2)}%
+              {" "}
+              of portfolio
+            </p>
 
-    </div>
+          </div>
 
+          {/* Largest Sector */}
 
-    {/* Sector Concentration */}
+          <div className="border rounded-xl p-4">
 
-    <div className="border rounded-xl p-4">
+            <p className="text-gray-500">
+              Largest Sector
+            </p>
 
-      <p className="text-gray-500">
-        Largest Sector
-      </p>
+            <p className="text-xl font-bold mt-2">
+              {largestSector}
+            </p>
 
-      <p className="text-xl font-bold mt-2">
+            <p className="text-sm text-gray-500 mt-1">
+              {largestSectorPercentage.toFixed(2)}%
+              {" "}
+              of portfolio
+            </p>
 
-        {Object.entries(
-          advisor.sectors || {}
-        ).length > 0
-          ? Object.entries(
-              advisor.sectors
-            ).sort(
-              (a, b) => b[1] - a[1]
-            )[0][0]
-          : "Unknown"}
+          </div>
 
-      </p>
+          {/* Sector Count */}
 
-      <p className="text-sm text-gray-500 mt-1">
+          <div className="border rounded-xl p-4">
 
-        {Object.entries(
-          advisor.sectors || {}
-        ).length > 0
-          ? `${Object.entries(
-              advisor.sectors
-            ).sort(
-              (a, b) => b[1] - a[1]
-            )[0][1]}% of portfolio`
-          : "No sector data"}
+            <p className="text-gray-500">
+              Sectors
+            </p>
 
-      </p>
+            <p className="text-xl font-bold mt-2">
+              {sectorCount}
+            </p>
 
-    </div>
+            <p className="text-sm text-gray-500 mt-1">
+              {advisor.diversification}
+            </p>
 
+          </div>
 
-    {/* Sector Count */}
+        </div>
 
-    <div className="border rounded-xl p-4">
+      </div>
 
-      <p className="text-gray-500">
-        Sectors
-      </p>
+      {/* -------------------------------- */}
+      {/* Risk Warning */}
+      {/* -------------------------------- */}
 
-      <p className="text-xl font-bold mt-2">
-        {advisor.sector_count}
-      </p>
+      <div className="mt-6">
 
-      <p className="text-sm text-gray-500 mt-1">
-        {advisor.diversification}
-      </p>
+        {advisor.portfolio_risk === "Very High" && (
 
-    </div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-5">
 
-  </div>
+            <h3 className="font-bold text-red-700">
+              🚨 Very High Concentration Risk
+            </h3>
 
-</div>
+            <p className="text-red-600 mt-2">
+              Your portfolio has significant concentration
+              risk. Your largest holding represents a large
+              percentage of the portfolio.
+            </p>
 
-{/* Risk Warning */}
+          </div>
 
-<div className="mt-6">
+        )}
 
-  {advisor.portfolio_risk === "Very High" && (
+        {advisor.portfolio_risk === "High" && (
 
-    <div className="bg-red-50 border border-red-200 rounded-xl p-5">
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-5">
 
-      <h3 className="font-bold text-red-700">
-        🚨 High Concentration Risk
-      </h3>
+            <h3 className="font-bold text-orange-700">
+              ⚠️ Elevated Portfolio Risk
+            </h3>
 
-      <p className="text-red-600 mt-2">
-        Your portfolio has significant concentration risk.
-        Consider spreading investments across different
-        stocks and sectors.
-      </p>
+            <p className="text-orange-600 mt-2">
+              Your portfolio has noticeable concentration.
+              Consider improving diversification.
+            </p>
 
-    </div>
+          </div>
 
-  )}
+        )}
 
-  {advisor.portfolio_risk === "High" && (
+        {advisor.portfolio_risk === "Medium" && (
 
-    <div className="bg-orange-50 border border-orange-200 rounded-xl p-5">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5">
 
-      <h3 className="font-bold text-orange-700">
-        ⚠️ Elevated Portfolio Risk
-      </h3>
+            <h3 className="font-bold text-yellow-700">
+              ⚡ Moderate Portfolio Risk
+            </h3>
 
-      <p className="text-orange-600 mt-2">
-        Your portfolio has noticeable concentration.
-        Consider improving diversification.
-      </p>
+            <p className="text-yellow-700 mt-2">
+              Your portfolio has moderate concentration.
+              Continue monitoring diversification.
+            </p>
 
-    </div>
+          </div>
 
-  )}
+        )}
 
-  {advisor.portfolio_risk === "Medium" && (
+        {advisor.portfolio_risk === "Low" && (
 
-    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-5">
 
-      <h3 className="font-bold text-yellow-700">
-        ⚡ Moderate Portfolio Risk
-      </h3>
+            <h3 className="font-bold text-green-700">
+              ✅ Healthy Portfolio Structure
+            </h3>
 
-      <p className="text-yellow-700 mt-2">
-        Your portfolio has moderate concentration.
-        Continue monitoring diversification.
-      </p>
+            <p className="text-green-700 mt-2">
+              Your portfolio appears reasonably diversified.
+            </p>
 
-    </div>
+          </div>
 
-  )}
+        )}
 
-  {advisor.portfolio_risk === "Low" && (
+      </div>
 
-    <div className="bg-green-50 border border-green-200 rounded-xl p-5">
-
-      <h3 className="font-bold text-green-700">
-        ✅ Healthy Portfolio Structure
-      </h3>
-
-      <p className="text-green-700 mt-2">
-        Your portfolio appears reasonably diversified.
-      </p>
-
-    </div>
-
-  )}
-
-</div>
-
-
+      {/* -------------------------------- */}
       {/* Holdings */}
+      {/* -------------------------------- */}
 
       <div className="grid md:grid-cols-3 gap-4 mt-6">
 
@@ -687,7 +766,6 @@ if (recommendedActions.length === 0) {
 
         </div>
 
-
         <div className="border rounded-xl p-4">
 
           <p className="text-gray-500">
@@ -695,11 +773,10 @@ if (recommendedActions.length === 0) {
           </p>
 
           <p className="text-xl font-bold mt-2">
-            {advisor.largest_holding_percent}%
+            {largestHoldingPercent.toFixed(2)}%
           </p>
 
         </div>
-
 
         <div className="border rounded-xl p-4">
 
@@ -708,15 +785,16 @@ if (recommendedActions.length === 0) {
           </p>
 
           <p className="text-xl font-bold mt-2">
-            {advisor.total_holdings}
+            {totalHoldings}
           </p>
 
         </div>
 
       </div>
 
-
+      {/* -------------------------------- */}
       {/* Portfolio Performance */}
+      {/* -------------------------------- */}
 
       <div className="mt-6">
 
@@ -725,6 +803,8 @@ if (recommendedActions.length === 0) {
         </h3>
 
         <div className="grid md:grid-cols-4 gap-4">
+
+          {/* Investment */}
 
           <div className="border rounded-xl p-4">
 
@@ -741,6 +821,7 @@ if (recommendedActions.length === 0) {
 
           </div>
 
+          {/* Current Value */}
 
           <div className="border rounded-xl p-4">
 
@@ -757,6 +838,7 @@ if (recommendedActions.length === 0) {
 
           </div>
 
+          {/* Profit */}
 
           <div className="border rounded-xl p-4">
 
@@ -764,7 +846,13 @@ if (recommendedActions.length === 0) {
               Profit
             </p>
 
-            <p className="text-xl font-bold mt-2">
+            <p
+              className={`text-xl font-bold mt-2 ${
+                Number(advisor.profit || 0) >= 0
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
               ₹
               {Number(
                 advisor.profit || 0
@@ -773,6 +861,7 @@ if (recommendedActions.length === 0) {
 
           </div>
 
+          {/* Profit % */}
 
           <div className="border rounded-xl p-4">
 
@@ -780,11 +869,14 @@ if (recommendedActions.length === 0) {
               Profit %
             </p>
 
-            <p className="text-xl font-bold mt-2">
-              {Number(
-                advisor.profit_percent || 0
-              ).toFixed(2)}
-              %
+            <p
+              className={`text-xl font-bold mt-2 ${
+                profitPercent >= 0
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              {profitPercent.toFixed(2)}%
             </p>
 
           </div>
@@ -793,8 +885,9 @@ if (recommendedActions.length === 0) {
 
       </div>
 
-
-      {/* Sector Breakdown */}
+      {/* -------------------------------- */}
+      {/* Sector Allocation */}
+      {/* -------------------------------- */}
 
       <div className="mt-6">
 
@@ -819,7 +912,9 @@ if (recommendedActions.length === 0) {
                     </span>
 
                     <span className="font-bold">
-                      {percentage}%
+                      {Number(
+                        percentage
+                      ).toFixed(2)}%
                     </span>
 
                   </div>
@@ -827,9 +922,11 @@ if (recommendedActions.length === 0) {
                   <div className="w-full bg-gray-200 rounded-full h-3">
 
                     <div
-                      className="bg-blue-600 h-3 rounded-full"
+                      className="bg-blue-600 h-3 rounded-full transition-all duration-500"
                       style={{
-                        width: `${percentage}%`,
+                        width: `${Number(
+                          percentage
+                        )}%`,
                       }}
                     />
 
@@ -844,8 +941,9 @@ if (recommendedActions.length === 0) {
 
       </div>
 
-
+      {/* -------------------------------- */}
       {/* Sector Pie Chart */}
+      {/* -------------------------------- */}
 
       {sectorLabels.length > 0 && (
 
@@ -868,8 +966,9 @@ if (recommendedActions.length === 0) {
 
       )}
 
-
-      {/* Recommendation */}
+      {/* -------------------------------- */}
+      {/* AI Recommendation */}
+      {/* -------------------------------- */}
 
       <div className="mt-8 bg-gray-50 rounded-xl p-5">
 
@@ -883,8 +982,9 @@ if (recommendedActions.length === 0) {
 
       </div>
 
-
+      {/* -------------------------------- */}
       {/* Recommended Actions */}
+      {/* -------------------------------- */}
 
       <div className="mt-6 border rounded-xl p-5">
 
@@ -899,39 +999,32 @@ if (recommendedActions.length === 0) {
 
               <div
                 key={index}
-                className="flex items-start gap-3 bg-gray-50 rounded-lg p-4"
+                className={`flex items-start gap-3 rounded-lg p-4 ${
+                  index === 0
+                    ? "bg-red-50 border border-red-200"
+                    : "bg-gray-50"
+                }`}
               >
 
                 <div
-  key={index}
-  className={`flex items-start gap-3 rounded-lg p-4 ${
-    index === 0
-      ? "bg-red-50 border border-red-200"
-      : "bg-gray-50"
-  }`}
->
+                  className={`font-bold ${
+                    index === 0
+                      ? "text-red-600"
+                      : "text-blue-600"
+                  }`}
+                >
+                  {index + 1}.
+                </div>
 
-  <div
-    className={`font-bold ${
-      index === 0
-        ? "text-red-600"
-        : "text-blue-600"
-    }`}
-  >
-    {index + 1}.
-  </div>
-
-  <p
-    className={
-      index === 0
-        ? "text-red-700 font-medium"
-        : "text-gray-700"
-    }
-  >
-    {action}
-  </p>
-
-</div>
+                <p
+                  className={
+                    index === 0
+                      ? "text-red-700 font-medium"
+                      : "text-gray-700"
+                  }
+                >
+                  {action}
+                </p>
 
               </div>
 
