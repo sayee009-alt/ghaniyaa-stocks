@@ -2,36 +2,38 @@ import yfinance as yf
 
 from backend.stock_registry import get_all_stocks
 from backend.services.score import calculate_score
-
+from backend.services.yahoo_symbol_service import get_yahoo_symbol
 
 # ============================================================
+
 # GHANIYAA DYNAMIC STOCK SCREENER
+
 # ============================================================
+
 #
 # Supports:
 #
-#   sector
-#   min_score
-#   sort
-#   order
-#   limit
+# sector
+# min_score
+# sort
+# order
+# limit
 #
 # Example:
 #
-#   /screener
+# /screener
 #
-#   /screener?sector=Technology
+# /screener?sector=Technology
 #
-#   /screener?min_score=80
+# /screener?min_score=80
 #
-#   /screener?sort=score
+# /screener?sort=score
 #
-#   /screener?sort=marketCap&order=desc
+# /screener?sort=marketCap&order=desc
 #
-#   /screener?sector=Technology&min_score=80&limit=10
+# /screener?sector=Technology&min_score=80&limit=10
 #
 # ============================================================
-
 
 def screen_all_stocks(
     sector=None,
@@ -117,16 +119,22 @@ def screen_all_stocks(
     # PROCESS STOCK UNIVERSE
     # ========================================================
 
-    for symbol, registry_info in registry.items():
+    for registry_key, registry_info in registry.items():
 
         try:
 
             # ------------------------------------------------
-            # Normalize symbol
+            # Get actual stock symbol from registry
             # ------------------------------------------------
 
             symbol = (
-                symbol
+                registry_info.get("nse_symbol")
+                or registry_info.get("symbol")
+                or registry_key
+            )
+
+            symbol = (
+                str(symbol)
                 .strip()
                 .upper()
             )
@@ -136,24 +144,38 @@ def screen_all_stocks(
             # Yahoo Finance symbol
             # ------------------------------------------------
 
-            yahoo_symbol = registry_info.get(
-                "yahoo_symbol"
+            yahoo_symbol = (
+                registry_info.get("nse_yahoo_symbol")
+                or registry_info.get("bse_yahoo_symbol")
             )
 
             if not yahoo_symbol:
 
-                yahoo_symbol = (
-                    symbol + ".NS"
-                )
+                yahoo_symbol = get_yahoo_symbol(symbol)
+
+
+            # ------------------------------------------------
+            # Require usable Yahoo symbol
+            # ------------------------------------------------
+
+            if not yahoo_symbol:
+
+                invalid.append({
+
+                    "symbol": symbol,
+
+                    "reason": "No Yahoo symbol available"
+
+                })
+
+                continue
 
 
             # ------------------------------------------------
             # Yahoo Finance
             # ------------------------------------------------
 
-            ticker = yf.Ticker(
-                yahoo_symbol
-            )
+            ticker = yf.Ticker(yahoo_symbol)
 
             info = ticker.info
 

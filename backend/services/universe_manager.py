@@ -19,7 +19,7 @@ def validate_stock(symbol: str):
     try:
 
         ticker = yf.Ticker(
-            symbol + ".NS"
+            get_yahoo_symbol(symbol)
         )
 
         info = ticker.info

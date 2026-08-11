@@ -1,0 +1,30 @@
+{
+    "success": true,
+    "refreshedAt": "2026-08-10T18:40:14.739664",
+    "previousCount": 8018,
+    "sourceNseCount": 2410,
+    "sourceBseCount": 9852,
+    "currentActiveSourceCount": 8018,
+    "newStocks": 0,
+    "updatedStocks": 0,
+    "removedStocks": 0,
+    "unchangedStocks": 8018,
+    "newStockIdentities": [],
+    "removedStockIdentities": [],
+    "updatedStockIdentities": [],
+    "mergeResult": {
+        "success": true,
+        "nseSourceCount": 2410,
+        "bseSourceCount": 9852,
+        "nseMerged": 2410,
+        "bseMerged": 9852,
+        "masterCount": 8018,
+        "nseStocks": 2410,
+        "bseStocks": 7894,
+        "bothExchanges": 2286,
+        "activeStocks": 5228,
+        "inactiveStocks": 2790,
+        "file": "C:\\Users\\sayee\\Desktop\\Ghaniyaa-Stocks\\database\\master_stock_universe.json"
+    },
+    "masterFile": "C:\\Users\\sayee\\Desktop\\Ghaniyaa-Stocks\\database\\master_stock_universe.json"
+}

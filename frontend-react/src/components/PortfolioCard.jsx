@@ -12,16 +12,7 @@ function PortfolioCard({ portfolio }) {
       <h2 className="text-2xl font-bold mb-4">
         💼 Portfolio Dashboard
       </h2>
-<h2>Total Investment</h2>
-<p>₹{portfolio.totalInvestment}</p>
 
-<h2>Current Value</h2>
-<p>₹{portfolio.currentValue}</p>
-
-<h2>Total Profit</h2>
-<p className="text-green-600">
-₹{portfolio.profit}
-</p>
       <div className="grid grid-cols-3 gap-4 mb-6">
 
         <div className="bg-blue-50 p-4 rounded">

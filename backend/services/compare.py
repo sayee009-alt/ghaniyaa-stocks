@@ -2,7 +2,18 @@ import yfinance as yf
 
 
 def get_stock(symbol):
-    ticker = yf.Ticker(f"{symbol}.NS")
+    from backend.services.yahoo_ticker import get_yahoo_ticker
+    yahoo_symbol = get_yahoo_ticker(symbol)
+
+if not yahoo_symbol:
+    raise ValueError(
+        f"No Yahoo Finance ticker found for {symbol}"
+    )
+
+ticker = yf.Ticker(
+    get_yahoo_symbol(symbol)
+)
+   
 
     info = ticker.info
 

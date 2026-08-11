@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import math
 
+from backend.services.yahoo_symbol_service import get_yahoo_symbol
+
 router = APIRouter()
 
 
@@ -52,7 +54,9 @@ def get_decision(symbol: str):
 
     try:
 
-        stock = yf.Ticker(symbol + ".NS")
+        stock = yf.Ticker(
+    get_yahoo_symbol(symbol)
+)
 
         history = stock.history(
             period="6mo",

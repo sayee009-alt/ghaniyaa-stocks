@@ -1,72 +1,51 @@
-import yfinance as yf
+from pathlib import Path
+import json
 
 
 # ============================================================
 # GHANIYAA MARKET UNIVERSE
 # ============================================================
 #
-# IMPORTANT:
-# This is currently the bootstrap/discovery list.
+# SOURCE OF TRUTH:
 #
-# Later, this function can be connected to a complete NSE
-# security-master source without changing the rest of Ghaniyaa.
+#     database/master_stock_universe.json
 #
-# NSE symbol and Yahoo Finance symbol are deliberately kept
-# separate.
+# This module must NOT use Yahoo Finance to discover or validate
+# the complete stock universe.
 #
-# Example:
+# Yahoo Finance is a market-data provider, not our exchange
+# security master.
 #
-# NSE symbol:
-#     TCS
+# Architecture:
 #
-# Yahoo symbol:
-#     TCS.NS
+#     NSE/BSE Import
+#          ↓
+#     NSE + BSE Merge
+#          ↓
+#     master_stock_universe.json
+#          ↓
+#     this module
+#          ↓
+#     universe_sync.py
 #
 # ============================================================
 
-NSE_SYMBOLS = [
-    "TCS",
-    "INFY",
-    "RELIANCE",
-    "HDFCBANK",
-    "ICICIBANK",
-    "SBIN",
-    "LT",
-    "ITC",
-    "BHARTIARTL",
-    "HINDUNILVR",
-    "HCLTECH",
-    "WIPRO",
-    "KOTAKBANK",
-    "ONGC",
-    "SUNPHARMA",
-    "CIPLA",
-    "MARUTI",
-    "TATAMOTORS",
-]
+
+# ============================================================
+# PATHS
+# ============================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+MASTER_UNIVERSE_FILE = (
+    PROJECT_ROOT
+    / "database"
+    / "master_stock_universe.json"
+)
 
 
 # ============================================================
-# SYMBOL ALIASES
-# ============================================================
-#
-# Some securities can change symbols over time.
-#
-# Keep aliases here rather than modifying the rest of the
-# application.
-#
-# This also gives us a place to handle future symbol changes.
-# ============================================================
-
-SYMBOL_ALIASES = {
-    # Example structure:
-    #
-    # "OLD_SYMBOL": "NEW_SYMBOL",
-}
-
-
-# ============================================================
-# NORMALIZE SYMBOL
+# SYMBOL NORMALIZATION
 # ============================================================
 
 def normalize_symbol(symbol: str) -> str:
@@ -80,21 +59,24 @@ def normalize_symbol(symbol: str) -> str:
         .upper()
     )
 
-    # Remove Yahoo Finance suffix if supplied.
-    if symbol.endswith(".NS"):
-        symbol = symbol[:-3]
-
-    # Apply known symbol alias.
-    symbol = SYMBOL_ALIASES.get(
-        symbol,
-        symbol
-    )
+    # Remove Yahoo suffixes if somebody supplies one.
+    for suffix in (
+        ".NS",
+        ".BO",
+    ):
+        if symbol.endswith(suffix):
+            symbol = symbol[:-len(suffix)]
 
     return symbol
 
 
 # ============================================================
 # GET YAHOO SYMBOL
+# ============================================================
+#
+# This helper is retained for downstream market-data services.
+#
+# It is NOT used for universe discovery.
 # ============================================================
 
 def get_yahoo_symbol(symbol: str) -> str:
@@ -104,37 +86,311 @@ def get_yahoo_symbol(symbol: str) -> str:
     if not symbol:
         return ""
 
-    return symbol + ".NS"
+    return f"{symbol}.NS"
+
+
+# ============================================================
+# LOAD MASTER UNIVERSE
+# ============================================================
+
+def load_master_universe():
+
+    if not MASTER_UNIVERSE_FILE.exists():
+
+        raise FileNotFoundError(
+            "Master stock universe not found: "
+            f"{MASTER_UNIVERSE_FILE}"
+        )
+
+    try:
+
+        with MASTER_UNIVERSE_FILE.open(
+            "r",
+            encoding="utf-8",
+        ) as file:
+
+            data = json.load(file)
+
+    except json.JSONDecodeError as exc:
+
+        raise RuntimeError(
+            "Master stock universe contains invalid JSON: "
+            f"{MASTER_UNIVERSE_FILE}"
+        ) from exc
+
+    if not isinstance(data, dict):
+
+        raise RuntimeError(
+            "Master stock universe must contain a JSON object."
+        )
+
+    return data
+
+
+# ============================================================
+# NORMALIZE MASTER RECORD
+# ============================================================
+
+def normalize_master_record(record):
+
+    if not isinstance(record, dict):
+        return None
+
+    symbol = normalize_symbol(
+        record.get("symbol")
+    )
+
+    if not symbol:
+        return None
+
+    exchanges = record.get(
+        "exchanges",
+        [],
+    )
+
+    if not isinstance(exchanges, list):
+        exchanges = []
+
+    exchanges = [
+        str(exchange).strip().upper()
+        for exchange in exchanges
+        if exchange
+    ]
+
+    # Remove duplicates while preserving order.
+    exchanges = list(
+        dict.fromkeys(exchanges)
+    )
+
+    active = record.get(
+        "active",
+        True,
+    )
+
+    status = str(
+        record.get(
+            "status",
+            "active" if active else "inactive",
+        )
+    ).strip().lower()
+
+    return {
+        **record,
+
+        "symbol": symbol,
+
+        "company": (
+            record.get("company")
+            or record.get("issuer_name")
+            or record.get("security_name")
+            or symbol
+        ),
+
+        "sector": (
+            record.get("sector")
+            or "Unknown"
+        ),
+
+        "exchanges": exchanges,
+
+        "exchange": (
+            record.get("exchange")
+            or (
+                "NSE"
+                if "NSE" in exchanges
+                else "BSE"
+                if "BSE" in exchanges
+                else (
+                    exchanges[0]
+                    if exchanges
+                    else "UNKNOWN"
+                )
+            )
+        ),
+
+        "active": bool(active),
+
+        "status": status,
+
+        "yahoo_symbol": (
+            record.get("yahoo_symbol")
+            or record.get("nse_yahoo_symbol")
+            or (
+                f"{symbol}.NS"
+                if "NSE" in exchanges
+                else f"{symbol}.BO"
+                if "BSE" in exchanges
+                else ""
+            )
+        ),
+    }
+
+
+# ============================================================
+# GET COMPLETE MASTER RECORDS
+# ============================================================
+
+def get_master_records(
+    include_inactive: bool = True,
+):
+
+    raw_master = load_master_universe()
+
+    records = []
+
+    for record in raw_master.values():
+
+        normalized = normalize_master_record(
+            record
+        )
+
+        if not normalized:
+            continue
+
+        if (
+            not include_inactive
+            and not normalized.get("active", True)
+        ):
+            continue
+
+        records.append(normalized)
+
+    return records
 
 
 # ============================================================
 # GET NSE EQUITY UNIVERSE
 # ============================================================
-#
-# This function provides the raw NSE universe.
-#
-# It deliberately does NOT call Yahoo Finance.
-#
-# That is important because:
-#
-# NSE universe discovery
-#        !=
-# Yahoo Finance validation
-#
-# Later we can replace only this function with a complete
-# exchange/security-master discovery mechanism.
-# ============================================================
 
 def get_nse_equity_universe():
+
+    records = get_master_records(
+        include_inactive=False
+    )
 
     results = []
 
     seen = set()
 
-    for raw_symbol in NSE_SYMBOLS:
+    for stock in records:
 
         symbol = normalize_symbol(
-            raw_symbol
+            stock.get("symbol")
+        )
+
+        if not symbol:
+            continue
+
+        exchanges = {
+            str(exchange).upper()
+            for exchange in stock.get(
+                "exchanges",
+                [],
+            )
+        }
+
+        # A stock belongs to NSE if the master says NSE.
+        #
+        # We do NOT ask Yahoo whether it exists.
+        if "NSE" not in exchanges:
+            continue
+
+        if symbol in seen:
+            continue
+
+        seen.add(symbol)
+
+        results.append({
+
+            **stock,
+
+            "symbol": symbol,
+
+            "exchange": "NSE",
+
+            "yahoo_symbol": (
+                stock.get("nse_yahoo_symbol")
+                or f"{symbol}.NS"
+            ),
+        })
+
+    return results
+
+
+# ============================================================
+# GET BSE EQUITY UNIVERSE
+# ============================================================
+
+def get_bse_equity_universe():
+
+    records = get_master_records(
+        include_inactive=False
+    )
+
+    results = []
+
+    seen = set()
+
+    for stock in records:
+
+        symbol = normalize_symbol(
+            stock.get("symbol")
+        )
+
+        if not symbol:
+            continue
+
+        exchanges = {
+            str(exchange).upper()
+            for exchange in stock.get(
+                "exchanges",
+                [],
+            )
+        }
+
+        if "BSE" not in exchanges:
+            continue
+
+        if symbol in seen:
+            continue
+
+        seen.add(symbol)
+
+        results.append({
+
+            **stock,
+
+            "symbol": symbol,
+
+            "exchange": "BSE",
+
+            "yahoo_symbol": (
+                stock.get("bse_yahoo_symbol")
+                or f"{symbol}.BO"
+            ),
+        })
+
+    return results
+
+
+# ============================================================
+# GET COMPLETE EQUITY UNIVERSE
+# ============================================================
+
+def get_equity_universe():
+
+    records = get_master_records(
+        include_inactive=False
+    )
+
+    results = []
+
+    seen = set()
+
+    for stock in records:
+
+        symbol = normalize_symbol(
+            stock.get("symbol")
         )
 
         if not symbol:
@@ -145,146 +401,7 @@ def get_nse_equity_universe():
 
         seen.add(symbol)
 
-        results.append({
-            "symbol": symbol,
-            "yahoo_symbol": get_yahoo_symbol(symbol)
-        })
-
-    return results
-
-
-# ============================================================
-# VALIDATE ONE STOCK
-# ============================================================
-
-def validate_market_symbol(symbol: str):
-
-    symbol = normalize_symbol(symbol)
-
-    if not symbol:
-
-        return {
-            "symbol": "",
-            "valid": False,
-            "reason": "Empty symbol"
-        }
-
-    yahoo_symbol = get_yahoo_symbol(
-        symbol
-    )
-
-    try:
-
-        ticker = yf.Ticker(
-            yahoo_symbol
-        )
-
-        info = ticker.info
-
-        # ----------------------------------------------------
-        # Determine whether Yahoo actually returned a security
-        # ----------------------------------------------------
-
-        company = info.get(
-            "longName"
-        )
-
-        if not company:
-
-            return {
-                "symbol": symbol,
-                "yahoo_symbol": yahoo_symbol,
-                "valid": False,
-                "reason": "Yahoo Finance returned no company information"
-            }
-
-        # ----------------------------------------------------
-        # Extract metadata
-        # ----------------------------------------------------
-
-        sector = info.get(
-            "sector",
-            "Unknown"
-        )
-
-        exchange = info.get(
-            "exchange",
-            "NSI"
-        )
-
-        quote_type = info.get(
-            "quoteType",
-            "EQUITY"
-        )
-
-        # ----------------------------------------------------
-        # Basic equity validation
-        # ----------------------------------------------------
-
-        if quote_type not in (
-            "EQUITY",
-            "STOCK"
-        ):
-
-            return {
-                "symbol": symbol,
-                "yahoo_symbol": yahoo_symbol,
-                "valid": False,
-                "reason": (
-                    f"Yahoo quote type is {quote_type}"
-                )
-            }
-
-        return {
-
-            "symbol": symbol,
-
-            "yahoo_symbol": yahoo_symbol,
-
-            "valid": True,
-
-            "company": company,
-
-            "sector": sector,
-
-            "exchange": exchange,
-
-            "quote_type": quote_type
-        }
-
-    except Exception as e:
-
-        return {
-
-            "symbol": symbol,
-
-            "yahoo_symbol": yahoo_symbol,
-
-            "valid": False,
-
-            "reason": str(e)
-        }
-
-
-# ============================================================
-# VALIDATE COMPLETE MARKET UNIVERSE
-# ============================================================
-
-def validate_market_universe():
-
-    results = []
-
-    universe = get_nse_equity_universe()
-
-    for stock in universe:
-
-        symbol = stock["symbol"]
-
-        result = validate_market_symbol(
-            symbol
-        )
-
-        results.append(result)
+        results.append(stock)
 
     return results
 
@@ -293,50 +410,16 @@ def validate_market_universe():
 # GET MARKET UNIVERSE
 # ============================================================
 #
-# Returns only VALID stocks.
+# IMPORTANT:
 #
-# This is what universe_sync.py should use when adding stocks
-# to Ghaniyaa's active registry.
+# This function returns the master universe directly.
+#
+# NO Yahoo Finance calls.
 # ============================================================
 
 def get_market_universe():
 
-    validation_results = (
-        validate_market_universe()
-    )
-
-    valid_stocks = []
-
-    for stock in validation_results:
-
-        if not stock.get("valid"):
-            continue
-
-        valid_stocks.append({
-
-            "symbol": stock["symbol"],
-
-            "company": stock.get(
-                "company",
-                stock["symbol"]
-            ),
-
-            "sector": stock.get(
-                "sector",
-                "Unknown"
-            ),
-
-            "exchange": stock.get(
-                "exchange",
-                "NSI"
-            ),
-
-            "yahoo_symbol": stock.get(
-                "yahoo_symbol"
-            )
-        })
-
-    return valid_stocks
+    return get_equity_universe()
 
 
 # ============================================================
@@ -348,17 +431,140 @@ def get_market_symbols():
     return [
         stock["symbol"]
         for stock in get_market_universe()
+        if stock.get("symbol")
     ]
 
 
 # ============================================================
-# GET COMPLETE VALIDATION REPORT
+# VALIDATE ONE MASTER RECORD
 # ============================================================
 #
-# Unlike get_market_universe(), this function includes both
-# valid and invalid stocks.
+# This is structural validation only.
 #
-# Useful for diagnostics and the /universe/test endpoint.
+# It deliberately does NOT contact Yahoo Finance.
+# ============================================================
+
+def validate_market_record(stock):
+
+    if not isinstance(stock, dict):
+
+        return {
+            "symbol": "",
+            "valid": False,
+            "reason": "Record is not an object",
+        }
+
+    symbol = normalize_symbol(
+        stock.get("symbol")
+    )
+
+    if not symbol:
+
+        return {
+            "symbol": "",
+            "valid": False,
+            "reason": "Missing symbol",
+        }
+
+    company = (
+        stock.get("company")
+        or stock.get("issuer_name")
+        or stock.get("security_name")
+    )
+
+    if not company:
+
+        return {
+            "symbol": symbol,
+            "valid": False,
+            "reason": "Missing company name",
+        }
+
+    exchanges = stock.get(
+        "exchanges",
+        [],
+    )
+
+    if not isinstance(exchanges, list):
+
+        return {
+            "symbol": symbol,
+            "valid": False,
+            "reason": "Invalid exchanges field",
+        }
+
+    exchanges = [
+        str(exchange).strip().upper()
+        for exchange in exchanges
+        if exchange
+    ]
+
+    if not exchanges:
+
+        return {
+            "symbol": symbol,
+            "valid": False,
+            "reason": "Missing exchange information",
+        }
+
+    if not any(
+        exchange in ("NSE", "BSE")
+        for exchange in exchanges
+    ):
+
+        return {
+            "symbol": symbol,
+            "valid": False,
+            "reason": "Not an NSE/BSE security",
+        }
+
+    return {
+
+        "symbol": symbol,
+
+        "valid": True,
+
+        "company": company,
+
+        "exchanges": exchanges,
+
+        "active": stock.get(
+            "active",
+            True,
+        ),
+    }
+
+
+# ============================================================
+# VALIDATE COMPLETE MARKET UNIVERSE
+# ============================================================
+#
+# Structural validation only.
+#
+# NO Yahoo Finance.
+# ============================================================
+
+def validate_market_universe():
+
+    records = get_master_records(
+        include_inactive=False
+    )
+
+    results = []
+
+    for stock in records:
+
+        results.append(
+            validate_market_record(
+                stock
+            )
+        )
+
+    return results
+
+
+# ============================================================
+# GET MARKET VALIDATION REPORT
 # ============================================================
 
 def get_market_validation_report():
@@ -385,5 +591,11 @@ def get_market_validation_report():
 
         "invalid": len(invalid),
 
-        "stocks": results
+        "stocks": results,
+
+        "source": str(
+            MASTER_UNIVERSE_FILE
+        ),
+
+        "validation_type": "master-record-structural",
     }

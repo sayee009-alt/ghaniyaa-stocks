@@ -12,6 +12,9 @@ from backend.routes.decision import router as decision_router
 from backend.routes.thesis import router as thesis_router
 from backend.routes.universe import router as universe_router
 from backend.services.universe_sync import sync_stock_universe
+from backend.routes.analysis import router as analysis_router
+from backend.routes.stock_universe import router as stock_universe_router
+from backend.services.yahoo_ticker import get_yahoo_ticker
 
 app = FastAPI()
 
@@ -30,6 +33,8 @@ app.include_router(prediction_router)
 app.include_router(decision_router)
 app.include_router(thesis_router)
 app.include_router(universe_router)
+app.include_router(analysis_router)
+app.include_router(stock_universe_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -78,19 +83,37 @@ def get_stock(symbol: str):
 @app.get("/live/{symbol}")
 def live_stock(symbol: str):
 
-    stock = yf.Ticker(symbol + ".NS")
+    stock = yf.Ticker(
+        get_yahoo_ticker(symbol)
+    )
+
     info = stock.info
 
     return {
-        "company": info.get("longName", "Unknown"),
-        "price": info.get("currentPrice", "N/A"),
-        "marketCap": info.get("marketCap", "N/A"),
-        "sector": info.get("sector", "Unknown")
+        "company": info.get(
+            "longName",
+            "Unknown"
+        ),
+        "price": info.get(
+            "currentPrice",
+            "N/A"
+        ),
+        "marketCap": info.get(
+            "marketCap",
+            "N/A"
+        ),
+        "sector": info.get(
+            "sector",
+            "Unknown"
+        )
     }
 @app.get("/score/{symbol}")
 def ghaniyaa_score(symbol: str):
 
-    stock = yf.Ticker(symbol + ".NS")
+    stock = yf.Ticker(
+        get_yahoo_ticker(symbol)
+    )
+
     info = stock.info
 
     score = 50
@@ -114,18 +137,34 @@ def ghaniyaa_score(symbol: str):
         score = 100
 
     return {
-        "company": info.get("longName"),
+        "company": info.get(
+            "longName",
+            symbol.upper()
+        ),
         "ghaniyaa_score": score
     }
 @app.get("/history/{symbol}")
 def stock_history(symbol: str):
 
-    stock = yf.Ticker(symbol + ".NS")
+    stock = yf.Ticker(
+        get_yahoo_ticker(symbol)
+    )
 
-    history = stock.history(period="1mo")
+    history = stock.history(
+        period="1mo"
+    )
 
-    dates = history.index.strftime("%Y-%m-%d").tolist()
-    prices = history["Close"].round(2).tolist()
+    dates = (
+        history.index
+        .strftime("%Y-%m-%d")
+        .tolist()
+    )
+
+    prices = (
+        history["Close"]
+        .round(2)
+        .tolist()
+    )
 
     return {
         "dates": dates,
@@ -134,50 +173,89 @@ def stock_history(symbol: str):
 @app.get("/financials/{symbol}")
 def financials(symbol: str):
 
-    stock = yf.Ticker(symbol + ".NS")
+    stock = yf.Ticker(
+        get_yahoo_ticker(symbol)
+    )
+
     info = stock.info
 
     return {
-        "pe_ratio": info.get("trailingPE", "N/A"),
-        "roe": info.get("returnOnEquity", "N/A"),
-        "debt_to_equity": info.get("debtToEquity", "N/A"),
-        "dividend_yield": info.get("dividendYield", "N/A"),
-        "market_cap": info.get("marketCap", "N/A")
+        "pe_ratio": info.get(
+            "trailingPE",
+            "N/A"
+        ),
+        "roe": info.get(
+            "returnOnEquity",
+            "N/A"
+        ),
+        "debt_to_equity": info.get(
+            "debtToEquity",
+            "N/A"
+        ),
+        "dividend_yield": info.get(
+            "dividendYield",
+            "N/A"
+        ),
+        "market_cap": info.get(
+            "marketCap",
+            "N/A"
+        )
     }
 @app.get("/summary/{symbol}")
 def summary(symbol: str):
 
-    stock = yf.Ticker(symbol + ".NS")
+    stock = yf.Ticker(
+        get_yahoo_ticker(symbol)
+    )
+
     info = stock.info
 
-    company = info.get("longName", symbol)
+    company = info.get(
+        "longName",
+        symbol.upper()
+    )
 
     pe = info.get("trailingPE")
     roe = info.get("returnOnEquity")
     debt = info.get("debtToEquity")
 
-    summary = f"{company}: "
+    summary_text = f"{company}: "
 
     if roe and roe > 0.15:
-        summary += "The company has strong profitability. "
+        summary_text += (
+            "The company has strong profitability. "
+        )
     else:
-        summary += "Profitability appears average. "
+        summary_text += (
+            "Profitability appears average. "
+        )
 
     if debt and debt < 50:
-        summary += "Debt levels are healthy. "
+        summary_text += (
+            "Debt levels are healthy. "
+        )
     else:
-        summary += "Debt levels should be reviewed carefully. "
+        summary_text += (
+            "Debt levels should be reviewed carefully. "
+        )
 
     if pe and pe < 25:
-        summary += "Valuation looks reasonable. "
+        summary_text += (
+            "Valuation looks reasonable. "
+        )
     else:
-        summary += "The stock may be trading at a premium valuation. "
+        summary_text += (
+            "The stock may be trading at a premium valuation. "
+        )
 
-    summary += "This is an automated summary for educational purposes and should not be considered investment advice."
+    summary_text += (
+        "This is an automated summary for educational "
+        "purposes and should not be considered investment advice."
+    )
 
     return {
         "company": company,
-        "summary": summary
+        "summary": summary_text
     }
 @app.post("/watchlist/{symbol}")
 def add_to_watchlist(symbol: str):
@@ -201,8 +279,13 @@ def get_watchlist():
 @app.get("/compare/{symbol1}/{symbol2}")
 def compare(symbol1: str, symbol2: str):
 
-    stock1 = yf.Ticker(symbol1.upper() + ".NS")
-    stock2 = yf.Ticker(symbol2.upper() + ".NS")
+    stock1 = yf.Ticker(
+        get_yahoo_ticker(symbol1)
+    )
+
+    stock2 = yf.Ticker(
+        get_yahoo_ticker(symbol2)
+    )
 
     info1 = stock1.info
     info2 = stock2.info

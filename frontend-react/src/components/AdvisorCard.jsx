@@ -21,9 +21,9 @@ export default function AdvisorCard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // --------------------------------
-  // Load Advisor
-  // --------------------------------
+  // ============================================================
+  // LOAD ADVISOR
+  // ============================================================
 
   useEffect(() => {
     async function loadAdvisor() {
@@ -47,9 +47,9 @@ export default function AdvisorCard() {
     loadAdvisor();
   }, []);
 
-  // --------------------------------
-  // Loading
-  // --------------------------------
+  // ============================================================
+  // LOADING
+  // ============================================================
 
   if (loading) {
     return (
@@ -65,9 +65,9 @@ export default function AdvisorCard() {
     );
   }
 
-  // --------------------------------
-  // Error
-  // --------------------------------
+  // ============================================================
+  // ERROR
+  // ============================================================
 
   if (error) {
     return (
@@ -87,21 +87,32 @@ export default function AdvisorCard() {
     );
   }
 
-  // --------------------------------
-  // No Data
-  // --------------------------------
+  // ============================================================
+  // NO DATA
+  // ============================================================
 
   if (!advisor) {
     return null;
   }
 
-  // --------------------------------
-  // Safe Numeric Values
-  // --------------------------------
+  // ============================================================
+  // SAFE NUMERIC VALUES
+  // ============================================================
 
   const healthScore = Number(
     advisor.health_score || 0
   );
+
+  /*
+   * IMPORTANT:
+   *
+   * portfolio_risk_score:
+   *
+   * 0   = Low Risk
+   * 100 = Very High Risk
+   *
+   * This matches advisor.py.
+   */
 
   const portfolioRiskScore = Number(
     advisor.portfolio_risk_score || 0
@@ -127,22 +138,16 @@ export default function AdvisorCard() {
     advisor.profit_percent || 0
   );
 
-  // --------------------------------
-  // Portfolio Strength
-  // --------------------------------
+  // ============================================================
+  // PORTFOLIO STRENGTH
   //
-  // IMPORTANT:
-  // Risk Score is:
-  // 0   = very high risk
-  // 100 = low risk
-  //
-  // Therefore we use the risk score directly.
-  // --------------------------------
+  // Higher = Better
+  // ============================================================
 
   const portfolioStrength = Math.round(
     (
       healthScore +
-      portfolioRiskScore +
+      (100 - portfolioRiskScore) +
       sectorScore
     ) / 3
   );
@@ -157,9 +162,9 @@ export default function AdvisorCard() {
     portfolioStrengthLabel = "Weak";
   }
 
-  // --------------------------------
-  // Strength Color
-  // --------------------------------
+  // ============================================================
+  // PORTFOLIO STRENGTH COLOR
+  // ============================================================
 
   let strengthColor = "bg-red-500";
   let strengthTextColor = "text-red-700";
@@ -175,26 +180,42 @@ export default function AdvisorCard() {
     strengthTextColor = "text-orange-700";
   }
 
-  // --------------------------------
-  // Risk Gauge
-  // --------------------------------
+  // ============================================================
+  // RISK GAUGE
+  //
+  // HIGHER SCORE = HIGHER RISK
+  // ============================================================
 
-  let riskGaugeColor = "bg-red-500";
+  let riskGaugeColor = "bg-green-500";
 
-  if (portfolioRiskScore >= 80) {
-    riskGaugeColor = "bg-green-500";
-  } else if (portfolioRiskScore >= 60) {
-    riskGaugeColor = "bg-yellow-500";
-  } else if (portfolioRiskScore >= 40) {
+  if (portfolioRiskScore >= 61) {
+    riskGaugeColor = "bg-red-500";
+  } else if (portfolioRiskScore >= 41) {
     riskGaugeColor = "bg-orange-500";
+  } else if (portfolioRiskScore >= 21) {
+    riskGaugeColor = "bg-yellow-500";
   }
 
   const riskGaugeLabel =
     advisor.portfolio_risk || "Unknown Risk";
 
-  // --------------------------------
-  // Sector Data
-  // --------------------------------
+  // ============================================================
+  // RISK SCORE LABEL
+  // ============================================================
+
+  let riskScoreDescription = "Low Risk";
+
+  if (portfolioRiskScore >= 61) {
+    riskScoreDescription = "Very High Risk";
+  } else if (portfolioRiskScore >= 41) {
+    riskScoreDescription = "High Risk";
+  } else if (portfolioRiskScore >= 21) {
+    riskScoreDescription = "Medium Risk";
+  }
+
+  // ============================================================
+  // SECTOR DATA
+  // ============================================================
 
   const sectorLabels = Object.keys(
     advisor.sectors || {}
@@ -204,9 +225,9 @@ export default function AdvisorCard() {
     advisor.sectors || {}
   ).map((value) => Number(value));
 
-  // --------------------------------
-  // Largest Sector
-  // --------------------------------
+  // ============================================================
+  // LARGEST SECTOR
+  // ============================================================
 
   const sectorEntries = Object.entries(
     advisor.sectors || {}
@@ -221,14 +242,15 @@ export default function AdvisorCard() {
     );
 
     largestSector = sortedSectors[0][0];
+
     largestSectorPercentage = Number(
       sortedSectors[0][1]
     );
   }
 
-  // --------------------------------
-  // Pie Chart
-  // --------------------------------
+  // ============================================================
+  // PIE CHART
+  // ============================================================
 
   const sectorChartData = {
     labels: sectorLabels,
@@ -251,13 +273,15 @@ export default function AdvisorCard() {
     },
   };
 
-  // --------------------------------
-  // Recommended Actions
-  // --------------------------------
+  // ============================================================
+  // RECOMMENDED ACTIONS
+  // ============================================================
 
   const recommendedActions = [];
 
-  // 1. Largest holding concentration
+  // ------------------------------------------------------------
+  // 1. Largest Holding Concentration
+  // ------------------------------------------------------------
 
   if (largestHoldingPercent >= 70) {
     recommendedActions.push(
@@ -279,7 +303,9 @@ export default function AdvisorCard() {
     );
   }
 
-  // 2. Sector diversification
+  // ------------------------------------------------------------
+  // 2. Sector Diversification
+  // ------------------------------------------------------------
 
   if (sectorCount === 1) {
     recommendedActions.push(
@@ -295,7 +321,9 @@ export default function AdvisorCard() {
     );
   }
 
-  // 3. Number of holdings
+  // ------------------------------------------------------------
+  // 3. Number of Holdings
+  // ------------------------------------------------------------
 
   if (totalHoldings === 1) {
     recommendedActions.push(
@@ -307,7 +335,9 @@ export default function AdvisorCard() {
     );
   }
 
-  // 4. Negative performance
+  // ------------------------------------------------------------
+  // 4. Negative Performance
+  // ------------------------------------------------------------
 
   if (profitPercent < 0) {
     recommendedActions.push(
@@ -315,7 +345,9 @@ export default function AdvisorCard() {
     );
   }
 
-  // 5. Very high portfolio risk
+  // ------------------------------------------------------------
+  // 5. High Portfolio Risk
+  // ------------------------------------------------------------
 
   if (advisor.portfolio_risk === "Very High") {
     recommendedActions.push(
@@ -327,7 +359,9 @@ export default function AdvisorCard() {
     );
   }
 
-  // 6. Healthy portfolio
+  // ------------------------------------------------------------
+  // 6. Healthy Portfolio
+  // ------------------------------------------------------------
 
   if (recommendedActions.length === 0) {
     recommendedActions.push(
@@ -335,16 +369,16 @@ export default function AdvisorCard() {
     );
   }
 
-  // --------------------------------
-  // Main UI
-  // --------------------------------
+  // ============================================================
+  // MAIN UI
+  // ============================================================
 
   return (
     <div className="bg-white rounded-xl shadow p-6 mt-6">
 
-      {/* -------------------------------- */}
-      {/* Header */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* HEADER */}
+      {/* ====================================================== */}
 
       <div className="flex items-center justify-between mb-6">
 
@@ -358,9 +392,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Portfolio Strength */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* PORTFOLIO STRENGTH */}
+      {/* ====================================================== */}
 
       <div className="border rounded-xl p-5 mb-6 bg-gray-50">
 
@@ -431,9 +465,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Score Cards */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* SCORE CARDS */}
+      {/* ====================================================== */}
 
       <div className="grid md:grid-cols-3 gap-4">
 
@@ -468,7 +502,7 @@ export default function AdvisorCard() {
           </p>
 
           <p className="text-sm text-gray-500 mt-1">
-            Higher score = lower risk
+            Higher score = higher risk
           </p>
 
         </div>
@@ -493,9 +527,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Risk Gauge */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* RISK GAUGE */}
+      {/* ====================================================== */}
 
       <div className="border rounded-xl p-5 mt-6">
 
@@ -520,7 +554,7 @@ export default function AdvisorCard() {
             </p>
 
             <p className="text-sm text-gray-500">
-              Risk Safety Score
+              {riskScoreDescription}
             </p>
 
           </div>
@@ -542,21 +576,21 @@ export default function AdvisorCard() {
 
         <div className="flex justify-between text-xs text-gray-500 mt-2">
 
-          <span>Very High Risk</span>
-
-          <span>High</span>
+          <span>Low Risk</span>
 
           <span>Medium</span>
 
-          <span>Low Risk</span>
+          <span>High</span>
+
+          <span>Very High Risk</span>
 
         </div>
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Risk Information */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* RISK INFORMATION */}
+      {/* ====================================================== */}
 
       <div className="grid md:grid-cols-3 gap-4 mt-6">
 
@@ -598,9 +632,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Risk Breakdown */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* RISK BREAKDOWN */}
+      {/* ====================================================== */}
 
       <div className="mt-6">
 
@@ -672,9 +706,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Risk Warning */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* RISK WARNING */}
+      {/* ====================================================== */}
 
       <div className="mt-6">
 
@@ -748,9 +782,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Holdings */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* HOLDINGS */}
+      {/* ====================================================== */}
 
       <div className="grid md:grid-cols-3 gap-4 mt-6">
 
@@ -792,9 +826,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Portfolio Performance */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* PORTFOLIO PERFORMANCE */}
+      {/* ====================================================== */}
 
       <div className="mt-6">
 
@@ -885,9 +919,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Sector Allocation */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* SECTOR ALLOCATION */}
+      {/* ====================================================== */}
 
       <div className="mt-6">
 
@@ -941,9 +975,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Sector Pie Chart */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* SECTOR PIE CHART */}
+      {/* ====================================================== */}
 
       {sectorLabels.length > 0 && (
 
@@ -966,9 +1000,9 @@ export default function AdvisorCard() {
 
       )}
 
-      {/* -------------------------------- */}
-      {/* AI Recommendation */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* AI RECOMMENDATION */}
+      {/* ====================================================== */}
 
       <div className="mt-8 bg-gray-50 rounded-xl p-5">
 
@@ -982,9 +1016,9 @@ export default function AdvisorCard() {
 
       </div>
 
-      {/* -------------------------------- */}
-      {/* Recommended Actions */}
-      {/* -------------------------------- */}
+      {/* ====================================================== */}
+      {/* RECOMMENDED ACTIONS */}
+      {/* ====================================================== */}
 
       <div className="mt-6 border rounded-xl p-5">
 

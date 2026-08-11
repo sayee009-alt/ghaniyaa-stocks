@@ -18,6 +18,8 @@ import AdvisorCard from "../components/AdvisorCard";
 import PredictionCard from "../components/PredictionCard";
 import DecisionCard from "../components/DecisionCard";
 import ThesisCard from "../components/ThesisCard";
+import { getStockAnalysis } from "../services/api";
+import StockAnalysisCard from "../components/StockAnalysisCard";
 
 import {
   getLiveStock,
@@ -49,17 +51,25 @@ function Dashboard() {
   const [symbol1, setSymbol1] = useState("");
   const [symbol2, setSymbol2] = useState("");
   const [comparison, setComparison] = useState(null);
-const [portfolio, setPortfolio] = useState({
-  holdings: [],
-  totalInvestment: 0,
-  currentValue: 0,
-  profit: 0,
-});
+
+  const [portfolio, setPortfolio] = useState({
+    holdings: [],
+    totalInvestment: 0,
+    currentValue: 0,
+    profit: 0,
+  });
+
   const [prediction, setPrediction] = useState(null);
   const [decision, setDecision] = useState(null);
   const [thesis, setThesis] = useState(null);
 
+  const [selectedStock, setSelectedStock] = useState(null);
+  const [stockAnalysis, setStockAnalysis] = useState(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
+  // ============================================================
+  // MAIN STOCK ANALYSIS
+  // ============================================================
 
   async function analyzeStock(symbol) {
     try {
@@ -102,55 +112,125 @@ const [portfolio, setPortfolio] = useState({
       setWatchlist(watchlistData.watchlist);
 
     } catch (error) {
-  console.error("Analyze Error:", error);
-  alert(error.message);
-}
+      console.error("Analyze Error:", error);
+      alert(error.message);
+    }
   }
-  
-async function addPortfolioStock(stock) {
-  await addPortfolio(stock);
 
-  const portfolioData = await getPortfolio();
+  // ============================================================
+  // STOCK ANALYSIS FROM SCREENER
+  // ============================================================
 
-  console.log(portfolioData);
+  async function handleSelectStock(symbol) {
+    setSelectedStock(symbol);
+    setStockAnalysis(null);
+    setAnalysisLoading(true);
 
-setPortfolio(portfolioData);
-}
-
-async function compare() {
-  try {
-    const data = await compareStocks(symbol1, symbol2);
-
-    console.log(data);
-
-    setComparison(data);
-
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-  useEffect(() => {
-  async function loadDashboard() {
     try {
-      const screenerData = await getScreener();
-      setScreener(screenerData);
+      const data = await getStockAnalysis(symbol);
 
-      const portfolioData = await getPortfolio();
-      setPortfolio(portfolioData);
+      console.log("Stock Analysis API:", data);
 
+      setStockAnalysis(data);
+    } catch (error) {
+      console.error(
+        "Stock Analysis API error:",
+        error
+      );
+
+      setStockAnalysis({
+        success: false,
+        symbol,
+        error: "Unable to load stock analysis.",
+      });
+    } finally {
+      setAnalysisLoading(false);
+    }
+  }
+
+  // ============================================================
+  // PORTFOLIO
+  // ============================================================
+
+  async function addPortfolioStock(stock) {
+    await addPortfolio(stock);
+
+    const portfolioData = await getPortfolio();
+
+    console.log(portfolioData);
+
+    setPortfolio(portfolioData);
+  }
+
+  // ============================================================
+  // COMPARE
+  // ============================================================
+
+  async function compare() {
+    try {
+      const data = await compareStocks(
+        symbol1,
+        symbol2
+      );
+
+      console.log(data);
+
+      setComparison(data);
     } catch (error) {
       console.error(error);
     }
   }
 
-  loadDashboard();
-}, []);
+  // ============================================================
+  // LOAD DASHBOARD
+  // ============================================================
 
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const screenerData = await getScreener();
+
+        /*
+         * Your backend returns:
+         *
+         * {
+         *   stocks: [...],
+         *   count: 17,
+         *   invalidCount: 1,
+         *   invalid: [...]
+         * }
+         *
+         * Keep only the stocks array for ScreenerTable.
+         */
+
+        if (Array.isArray(screenerData)) {
+          setScreener(screenerData);
+        } else {
+          setScreener(
+            screenerData?.stocks || []
+          );
+        }
+
+        const portfolioData = await getPortfolio();
+
+        setPortfolio(portfolioData);
+
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadDashboard();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gray-100">
+
+      <div className="max-w-7xl mx-auto p-6">
+
+        {/* ======================================================
+            HEADER
+        ====================================================== */}
 
         <h1 className="text-4xl font-bold">
           📈 Ghaniyaa Stocks
@@ -160,26 +240,145 @@ async function compare() {
           AI-Powered Investment Research Platform
         </p>
 
-
+        {/* ======================================================
+            SEARCH
+        ====================================================== */}
 
         <div className="mt-8">
           <SearchBar onAnalyze={analyzeStock} />
         </div>
 
+        {/* ======================================================
+            STOCK SCREENER
+        ====================================================== */}
+
         <div className="mt-8 bg-white p-6 rounded shadow">
 
-  <h2 className="text-2xl font-bold mb-4">
-    📊 Compare Stocks
-  </h2>
-  
+          <ScreenerTable
+            stocks={screener}
+            onSelectStock={handleSelectStock}
+          />
 
+        </div>
+
+<StockAnalysisCard
+  analysis={stockAnalysis}
+  loading={analysisLoading}
+  onClose={() => {
+    setSelectedStock(null);
+    setStockAnalysis(null);
+  }}
+/>
+    
+
+
+
+{/* STOCK */}
+    <div className="mt-8">
+      <StockCard
+        stock={stock}
+        score={score}
+      />
+    </div>
+
+    
+        {/* ======================================================
+            FINANCIALS
+        ====================================================== */}
+
+        <div className="mt-8">
+          <FinancialCard
+            financials={financials}
+          />
+        </div>
+
+
+    {/* STOCK CHART */}
+    <div className="mt-8">
+      <StockChart history={history} />
+    </div>
+
+
+
+        {/* ======================================================
+            RECOMMENDATION
+        ====================================================== */}
+
+        <div className="mt-8">
+          <RecommendationCard
+            score={score}
+          />
+        </div>
+
+        {/* ======================================================
+            PREDICTION
+        ====================================================== */}
+
+        <div className="mt-8">
+          <PredictionCard
+            prediction={prediction}
+          />
+        </div>
+
+        {/* ======================================================
+            DECISION
+        ====================================================== */}
+
+        <div className="mt-8">
+          <DecisionCard
+            decision={decision}
+          />
+        </div>
+
+        {/* ======================================================
+            THESIS
+        ====================================================== */}
+
+        <div className="mt-8">
+          <ThesisCard
+            thesis={thesis}
+          />
+        </div>
+
+        {/* ======================================================
+            SUMMARY
+        ====================================================== */}
+
+        <div className="mt-8">
+          <SummaryCard
+            summary={summary}
+          />
+        </div>
+
+        {/* ======================================================
+            NEWS
+        ====================================================== */}
+
+        <div className="mt-8">
+          <NewsCard
+            news={news}
+          />
+        </div>
+
+        {/* ======================================================
+            COMPARE
+        ====================================================== */}
+
+<div className="mt-8 bg-white p-6 rounded shadow">
+<h2 className="text-2xl font-bold mb-4">
+    🔄 Compare Stocks
+  </h2>
   <div className="flex gap-4">
 
     <input
       type="text"
       placeholder="First Symbol"
       value={symbol1}
-      onChange={(e) => setSymbol1(e.target.value.toUpperCase())}
+      onChange={(e) =>
+        setSymbol1(
+          e.target.value.toUpperCase()
+        )
+      }
       className="border p-2 rounded flex-1"
     />
 
@@ -187,7 +386,11 @@ async function compare() {
       type="text"
       placeholder="Second Symbol"
       value={symbol2}
-      onChange={(e) => setSymbol2(e.target.value.toUpperCase())}
+      onChange={(e) =>
+        setSymbol2(
+          e.target.value.toUpperCase()
+        )
+      }
       className="border p-2 rounded flex-1"
     />
 
@@ -200,75 +403,68 @@ async function compare() {
 
   </div>
 
+  {comparison && (
+    <div className="mt-6">
+      <CompareCard comparison={comparison} />
+    </div>
+  )}
+
+  {comparison && (
+    <div className="mt-6">
+      <CompareChart comparison={comparison} />
+    </div>
+  )}
+
 </div>
 
+
+        {/* ======================================================
+    PORTFOLIO BUILDER
+====================================================== */}
+
 <div className="mt-8">
-  <CompareCard comparison={comparison} />
-</div>
-<div className="mt-8">
-  <CompareChart
-    stock1={comparison?.stock1}
-    stock2={comparison?.stock2}
+  <PortfolioBuilder
+    onAdd={addPortfolioStock}
   />
 </div>
-        <PortfolioBuilder onAdd={addPortfolioStock} />
-        <div className="mt-8">
-        <PortfolioCard portfolio={portfolio} />
-        </div>
-        
-        <div className="mt-8">
-        <PortfolioPieChart portfolio={portfolio} />
-        </div>
-        
-        <div className="mt-8">
-        <AdvisorCard />
-        </div>
 
-        <div className="mt-8">
-        <StockCard stock={stock} score={score} />
-        </div>
-
-        <div className="mt-8">
-         <FinancialCard financials={financials} />
-         </div>
-
-        <div className="mt-8">
-           <RecommendationCard score={score} />  
-        </div>
-
-        <div className="mt-8">
-         <PredictionCard prediction={prediction} />
-        </div>
-
-        <div className="mt-8">
-        <DecisionCard decision={decision} />
-        </div>
-        
-        <div className="mt-8">
-        <ThesisCard thesis={thesis} />
-        </div>
-        
-        <div className="mt-8">
-          <SummaryCard summary={summary} />
-        </div>
-
-        <div className="mt-8">
-        <NewsCard news={news} />
-        </div>
-        
-
-        
+{/* ======================================================
+    PORTFOLIO DASHBOARD
+====================================================== */}
 
 <div className="mt-8">
-          <StockChart history={history} />
-        </div>
-
-        <div className="mt-8">
-  <ScreenerTable stocks={screener} />
+  <PortfolioCard
+    portfolio={portfolio}
+  />
 </div>
 
+        {/* ======================================================
+            PORTFOLIO PIE
+        ====================================================== */}
+
         <div className="mt-8">
-          <Watchlist watchlist={watchlist} />
+          <PortfolioPieChart
+            portfolio={portfolio}
+          />
+        </div>
+
+        {/* ======================================================
+            ADVISOR
+        ====================================================== */}
+
+        <div className="mt-8">
+          <AdvisorCard />
+        </div>
+
+
+        {/* ======================================================
+            WATCHLIST
+        ====================================================== */}
+
+        <div className="mt-8">
+          <Watchlist
+            watchlist={watchlist}
+          />
         </div>
 
       </div>

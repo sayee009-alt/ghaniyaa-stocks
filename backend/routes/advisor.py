@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from backend.routes.portfolio import load_portfolio
+from backend.services.yahoo_ticker import get_yahoo_ticker
 import yfinance as yf
 
 router = APIRouter()
@@ -91,7 +92,7 @@ def advisor():
         try:
 
             stock = yf.Ticker(
-                symbol + ".NS"
+                get_yahoo_symbol(symbol)
             )
 
             # ----------------------------------------------------

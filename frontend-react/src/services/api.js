@@ -116,3 +116,16 @@ export async function getThesis(symbol) {
 
   return await response.json();
 }
+export async function getStockAnalysis(symbol) {
+  const response = await fetch(
+    `http://127.0.0.1:8000/analysis/${encodeURIComponent(symbol)}`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Stock analysis request failed: ${response.status}`
+    );
+  }
+
+  return await response.json();
+}
