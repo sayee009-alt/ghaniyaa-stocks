@@ -33,6 +33,7 @@ import {
   compareStocks,
   getPortfolio,
   addPortfolio,
+  sellPortfolio,
   getPrediction,
   getDecision,
   getThesis,
@@ -152,15 +153,53 @@ function Dashboard() {
   // PORTFOLIO
   // ============================================================
 
-  async function addPortfolioStock(stock) {
+async function addPortfolioStock(stock) {
+  try {
     await addPortfolio(stock);
 
     const portfolioData = await getPortfolio();
 
-    console.log(portfolioData);
+    console.log("Portfolio after BUY:", portfolioData);
 
     setPortfolio(portfolioData);
+
+  } catch (error) {
+    console.error("Buy Error:", error);
+    alert(error.message);
   }
+}
+
+
+async function sellPortfolioStock(stock) {
+  try {
+    console.log("SELL REQUEST:", stock);
+
+    const result = await sellPortfolio(stock);
+
+    console.log("SELL RESPONSE:", result);
+
+    // Reload portfolio after successful sale
+    const portfolioData = await getPortfolio();
+
+    console.log("Portfolio after SELL:", portfolioData);
+
+    setPortfolio(portfolioData);
+
+    alert(
+      `Sold ${stock.quantity} ${stock.symbol} successfully.\n` +
+      `Realized Profit: ₹${result.realizedProfit}`
+    );
+
+  } catch (error) {
+
+    console.error("Sell Error:", error);
+
+    alert(
+      error.message ||
+      "Unable to sell stock."
+    );
+  }
+}
 
   // ============================================================
   // COMPARE
@@ -433,9 +472,14 @@ function Dashboard() {
 ====================================================== */}
 
 <div className="mt-8">
-  <PortfolioCard
-    portfolio={portfolio}
-  />
+ <PortfolioCard
+  portfolio={portfolio}
+  onSell={sellPortfolioStock}
+  onPortfolioUpdated={async () => {
+    const portfolioData = await getPortfolio();
+    setPortfolio(portfolioData);
+  }}
+/>
 </div>
 
         {/* ======================================================

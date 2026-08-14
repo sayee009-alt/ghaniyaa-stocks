@@ -1,0 +1,66 @@
+[
+    {
+        "type": "SELL",
+        "symbol": "TCS",
+        "quantity": 1.0,
+        "buyPrice": 1724.99,
+        "sellPrice": 1500.0,
+        "profit": -224.99
+    },
+    {
+        "type": "SELL",
+        "symbol": "TCS",
+        "quantity": 1.0,
+        "buyPrice": 1724.99,
+        "sellPrice": 1500.0,
+        "profit": -224.99
+    },
+    {
+        "type": "SELL",
+        "symbol": "INFY",
+        "quantity": 1.0,
+        "buyPrice": 1000.0,
+        "sellPrice": 1169.2,
+        "profit": 169.2
+    },
+    {
+        "type": "SELL",
+        "symbol": "TCS",
+        "quantity": 3.0,
+        "buyPrice": 1724.99,
+        "sellPrice": 2361.0,
+        "profit": 1908.03
+    },
+    {
+        "type": "SELL",
+        "symbol": "INFY",
+        "quantity": 1.0,
+        "buyPrice": 1040.0,
+        "sellPrice": 1200.0,
+        "profit": 160.0
+    },
+    {
+        "type": "SELL",
+        "symbol": "INFY",
+        "quantity": 1.0,
+        "buyPrice": 1026.67,
+        "sellPrice": 1169.2,
+        "profit": 142.53
+    },
+    {
+        "type": "SELL",
+        "symbol": "TCS",
+        "quantity": 3.0,
+        "buyPrice": 1679.68,
+        "sellPrice": 2361.0,
+        "profit": 2043.96
+    },
+    {
+        "type": "SELL",
+        "symbol": "TCS",
+        "quantity": 1.0,
+        "buyPrice": 1679.68,
+        "sellPrice": 2361.0,
+        "profit": 681.32
+    }
+]
