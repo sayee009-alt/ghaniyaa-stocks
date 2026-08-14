@@ -475,11 +475,7 @@ async function sellPortfolioStock(stock) {
  <PortfolioCard
   portfolio={portfolio}
   onSell={sellPortfolioStock}
-  onPortfolioUpdated={async () => {
-    const portfolioData = await getPortfolio();
-    setPortfolio(portfolioData);
-  }}
-/>
+  />
 </div>
 
         {/* ======================================================

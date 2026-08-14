@@ -70,5 +70,13 @@
         "buyPrice": 1026.67,
         "sellPrice": 1169.2,
         "profit": 285.06
+    },
+    {
+        "type": "SELL",
+        "symbol": "TCS",
+        "quantity": 3.0,
+        "buyPrice": 1592.01,
+        "sellPrice": 2361.0,
+        "profit": 2306.97
     }
 ]
