@@ -4,36 +4,134 @@ from backend.stock_registry import get_all_stocks
 from backend.services.score import calculate_score
 from backend.services.yahoo_symbol_service import get_yahoo_symbol
 
-# ============================================================
-
-# GHANIYAA DYNAMIC STOCK SCREENER
 
 # ============================================================
-
+# GHANIYAA STOCK SCREENER
+# ============================================================
 #
 # Supports:
 #
-# sector
-# min_score
-# sort
-# order
-# limit
+#   sector
+#   min_score
+#   sort
+#   order
+#   limit
 #
-# Example:
+# Examples:
 #
-# /screener
+#   /screener?limit=5
+#   /screener?sector=Technology&limit=5
+#   /screener?min_score=80&limit=10
+#   /screener?sort=marketCap&order=desc&limit=10
 #
-# /screener?sector=Technology
+# IMPORTANT:
 #
-# /screener?min_score=80
-#
-# /screener?sort=score
-#
-# /screener?sort=marketCap&order=desc
-#
-# /screener?sector=Technology&min_score=80&limit=10
+# limit is applied DURING processing.
+# This prevents a test such as limit=5 from processing
+# the entire 8,018-stock universe.
 #
 # ============================================================
+
+
+def _safe_float(value):
+    """
+    Convert a value to float when possible.
+
+    Yahoo Finance sometimes returns strings, None,
+    NaN, or other unexpected values.
+    """
+
+    if value is None:
+        return None
+
+    if isinstance(value, bool):
+        return None
+
+    try:
+        value = float(value)
+
+        # Reject NaN / infinity
+        if value != value:
+            return None
+
+        if value == float("inf"):
+            return None
+
+        if value == float("-inf"):
+            return None
+
+        return value
+
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_number(value):
+    """
+    Preserve integer-looking values while making sure
+    strings cannot break sorting/comparisons.
+    """
+
+    number = _safe_float(value)
+
+    if number is None:
+        return None
+
+    return number
+
+
+def _safe_score(info):
+    """
+    Calculate Ghaniyaa score safely.
+
+    calculate_score() is the existing scoring engine,
+    but Yahoo values can occasionally have unexpected
+    types. Normalize the relevant values first.
+    """
+
+    safe_info = dict(info)
+
+    safe_info["trailingPE"] = _safe_number(
+        info.get("trailingPE")
+    )
+
+    safe_info["returnOnEquity"] = _safe_number(
+        info.get("returnOnEquity")
+    )
+
+    safe_info["debtToEquity"] = _safe_number(
+        info.get("debtToEquity")
+    )
+
+    try:
+        score = calculate_score(safe_info)
+
+        return _safe_number(score)
+
+    except Exception:
+        return None
+
+
+def _safe_sort_value(stock, sort_field):
+    """
+    Return a consistent value for sorting.
+
+    Missing numeric values are placed at the bottom.
+    Strings are never compared against numbers.
+    """
+
+    value = stock.get(sort_field)
+
+    if sort_field == "symbol":
+        return str(value or "").upper()
+
+    number = _safe_float(value)
+
+    if number is None:
+        return float("-inf")
+
+    return number
+
 
 def screen_all_stocks(
     sector=None,
@@ -44,49 +142,58 @@ def screen_all_stocks(
 ):
 
     valid_stocks = []
-
     invalid = []
 
     registry = get_all_stocks()
 
+    # ========================================================
+    # NORMALIZE LIMIT
+    # ========================================================
+
+    if limit is not None:
+
+        try:
+            limit = int(limit)
+
+        except (TypeError, ValueError):
+
+            limit = None
+
+        if limit is not None and limit <= 0:
+            limit = None
 
     # ========================================================
-    # NORMALIZE FILTERS
+    # NORMALIZE SECTOR
     # ========================================================
 
     if sector:
 
-        sector = sector.strip().lower()
+        sector = str(
+            sector
+        ).strip().lower()
 
+        if not sector:
+            sector = None
+
+    # ========================================================
+    # NORMALIZE MIN SCORE
+    # ========================================================
 
     if min_score is not None:
 
-        try:
+        min_score = _safe_float(
+            min_score
+        )
 
-            min_score = float(min_score)
-
-        except (TypeError, ValueError):
-
-            min_score = None
-
+    # ========================================================
+    # NORMALIZE SORT
+    # ========================================================
 
     sort = (
         str(sort)
         .strip()
         .lower()
     )
-
-
-    order = (
-        str(order)
-        .strip()
-        .lower()
-    )
-
-
-    # ========================================================
-    # ALLOWED SORT FIELDS
-    # ========================================================
 
     allowed_sort_fields = {
 
@@ -106,57 +213,96 @@ def screen_all_stocks(
 
     }
 
-
-    # Fallback to score if an invalid sort field is supplied.
-
     sort_field = allowed_sort_fields.get(
         sort,
         "score"
     )
 
+    # ========================================================
+    # NORMALIZE ORDER
+    # ========================================================
+
+    order = (
+        str(order)
+        .strip()
+        .lower()
+    )
+
+    reverse = (
+        order != "asc"
+    )
 
     # ========================================================
     # PROCESS STOCK UNIVERSE
     # ========================================================
 
+    processed = 0
+
     for registry_key, registry_info in registry.items():
+
+        # ----------------------------------------------------
+        # IMPORTANT:
+        #
+        # If limit is supplied, stop processing once we have
+        # enough VALID stocks.
+        #
+        # This makes limit=5 a genuinely small test.
+        # ----------------------------------------------------
+
+        if (
+            limit is not None
+            and len(valid_stocks) >= limit
+        ):
+
+            break
+
+        processed += 1
+
+        symbol = str(
+            registry_key
+        ).strip().upper()
 
         try:
 
             # ------------------------------------------------
-            # Get actual stock symbol from registry
+            # Registry information
             # ------------------------------------------------
 
-            symbol = (
-                registry_info.get("nse_symbol")
-                or registry_info.get("symbol")
+            if not isinstance(
+                registry_info,
+                dict
+            ):
+
+                registry_info = {}
+
+            symbol = str(
+                registry_info.get(
+                    "nse_symbol"
+                )
+                or registry_info.get(
+                    "symbol"
+                )
                 or registry_key
-            )
-
-            symbol = (
-                str(symbol)
-                .strip()
-                .upper()
-            )
-
+            ).strip().upper()
 
             # ------------------------------------------------
-            # Yahoo Finance symbol
+            # Yahoo symbol
             # ------------------------------------------------
 
             yahoo_symbol = (
-                registry_info.get("nse_yahoo_symbol")
-                or registry_info.get("bse_yahoo_symbol")
+                registry_info.get(
+                    "nse_yahoo_symbol"
+                )
+                or registry_info.get(
+                    "bse_yahoo_symbol"
+                )
             )
 
             if not yahoo_symbol:
 
-                yahoo_symbol = get_yahoo_symbol(symbol)
-
-
-            # ------------------------------------------------
-            # Require usable Yahoo symbol
-            # ------------------------------------------------
+                yahoo_symbol = get_yahoo_symbol(
+                    symbol
+                )
 
             if not yahoo_symbol:
 
@@ -164,54 +310,80 @@ def screen_all_stocks(
 
                     "symbol": symbol,
 
-                    "reason": "No Yahoo symbol available"
+                    "reason": (
+                        "No Yahoo symbol available"
+                    ),
 
                 })
 
                 continue
 
-
             # ------------------------------------------------
             # Yahoo Finance
             # ------------------------------------------------
 
-            ticker = yf.Ticker(yahoo_symbol)
+            ticker = yf.Ticker(
+                yahoo_symbol
+            )
+
+            # ------------------------------------------------
+            # ticker.info can sometimes hang/fail.
+            #
+            # Keep this isolated inside the stock-level
+            # exception so one stock cannot terminate the
+            # entire screener.
+            # ------------------------------------------------
 
             info = ticker.info
 
+            if not isinstance(
+                info,
+                dict
+            ):
+
+                info = {}
 
             # ------------------------------------------------
             # Company
             # ------------------------------------------------
 
-            company = info.get(
-                "longName"
-            )
-
-            if not company:
-
-                company = registry_info.get(
+            company = (
+                info.get(
+                    "longName"
+                )
+                or info.get(
+                    "shortName"
+                )
+                or registry_info.get(
                     "company"
                 )
-
+                or "Unknown"
+            )
 
             # ------------------------------------------------
             # Current price
             # ------------------------------------------------
 
-            current_price = info.get(
-                "currentPrice"
+            current_price = _safe_float(
+                info.get(
+                    "currentPrice"
+                )
             )
 
-
             # ------------------------------------------------
-            # Market cap
+            # Fallback price
+            #
+            # Some Yahoo responses don't provide currentPrice.
+            # Try regularMarketPrice.
             # ------------------------------------------------
 
-            market_cap = info.get(
-                "marketCap"
-            )
+            if current_price is None:
 
+                current_price = _safe_float(
+                    info.get(
+                        "regularMarketPrice"
+                    )
+                )
 
             # ------------------------------------------------
             # Price is required
@@ -226,76 +398,103 @@ def screen_all_stocks(
                     "reason": (
                         "Current market price "
                         "is unavailable"
-                    )
+                    ),
 
                 })
 
                 continue
 
+            # ------------------------------------------------
+            # Market cap
+            # ------------------------------------------------
+
+            market_cap = _safe_float(
+                info.get(
+                    "marketCap"
+                )
+            )
 
             # ------------------------------------------------
             # Sector
             # ------------------------------------------------
 
-            stock_sector = info.get(
-                "sector"
-            )
-
-            if not stock_sector:
-
-                stock_sector = registry_info.get(
-                    "sector",
-                    "Unknown"
+            stock_sector = (
+                info.get(
+                    "sector"
                 )
-
-
-            # ------------------------------------------------
-            # Calculate Ghaniyaa Score
-            # ------------------------------------------------
-
-            score = calculate_score(
-                info
+                or registry_info.get(
+                    "sector"
+                )
+                or "Unknown"
             )
 
+            stock_sector = str(
+                stock_sector
+            )
 
-            # =================================================
-            # SECTOR FILTER
-            # =================================================
+            # ------------------------------------------------
+            # Sector filter
+            #
+            # Apply BEFORE calculating the score.
+            # ------------------------------------------------
 
             if sector:
 
-                if sector not in stock_sector.lower():
+                if sector not in (
+                    stock_sector.lower()
+                ):
 
                     continue
 
+            # ------------------------------------------------
+            # PE
+            # ------------------------------------------------
 
-            # =================================================
-            # SCORE FILTER
-            # =================================================
+            pe = _safe_float(
+                info.get(
+                    "trailingPE"
+                )
+            )
+
+            # ------------------------------------------------
+            # ROE
+            # ------------------------------------------------
+
+            roe = _safe_float(
+                info.get(
+                    "returnOnEquity"
+                )
+            )
+
+            # ------------------------------------------------
+            # Ghaniyaa Score
+            # ------------------------------------------------
+
+            score = _safe_score(
+                info
+            )
+
+            # ------------------------------------------------
+            # Score filter
+            # ------------------------------------------------
 
             if min_score is not None:
 
                 if score is None:
-
                     continue
 
                 if score < min_score:
-
                     continue
 
-
-            # =================================================
-            # ADD VALID STOCK
-            # =================================================
+            # ------------------------------------------------
+            # Add valid stock
+            # ------------------------------------------------
 
             valid_stocks.append({
 
                 "symbol": symbol,
 
-                "company": (
-                    company
-                    or "Unknown"
-                ),
+                "company": company,
 
                 "price": current_price,
 
@@ -303,18 +502,13 @@ def screen_all_stocks(
 
                 "marketCap": market_cap,
 
-                "pe": info.get(
-                    "trailingPE"
-                ),
+                "pe": pe,
 
-                "roe": info.get(
-                    "returnOnEquity"
-                ),
+                "roe": roe,
 
                 "score": score,
 
             })
-
 
         except Exception as e:
 
@@ -333,52 +527,26 @@ def screen_all_stocks(
 
                 "reason": (
                     "Market data request failed"
-                )
+                ),
 
             })
 
             continue
 
-
     # ========================================================
-    # SORT
+    # SORT VALID STOCKS
     # ========================================================
-
-    def sort_value(stock):
-
-        value = stock.get(
-            sort_field
-        )
-
-        # ----------------------------------------------------
-        # Missing numeric values go to the bottom.
-        # ----------------------------------------------------
-
-        if value is None:
-
-            if sort_field == "symbol":
-
-                return ""
-
-            return float("-inf")
-
-
-        return value
-
-
-    reverse = (
-        order != "asc"
-    )
-
 
     valid_stocks.sort(
-        key=sort_value,
+        key=lambda stock: _safe_sort_value(
+            stock,
+            sort_field
+        ),
         reverse=reverse
     )
 
-
     # ========================================================
-    # ASSIGN RANK AFTER FILTERING + SORTING
+    # APPLY RANK AFTER SORTING
     # ========================================================
 
     for index, stock in enumerate(
@@ -388,36 +556,30 @@ def screen_all_stocks(
 
         stock["rank"] = index
 
-
     # ========================================================
-    # APPLY LIMIT
+    # APPLY FINAL LIMIT
+    #
+    # This is also kept here as protection.
     # ========================================================
 
     if limit is not None:
 
-        try:
-
-            limit = int(limit)
-
-            if limit > 0:
-
-                valid_stocks = (
-                    valid_stocks[:limit]
-                )
-
-        except (TypeError, ValueError):
-
-            pass
-
+        valid_stocks = (
+            valid_stocks[:limit]
+        )
 
     # ========================================================
     # SORT INVALID STOCKS
     # ========================================================
 
     invalid.sort(
-        key=lambda stock: stock["symbol"]
+        key=lambda stock: str(
+            stock.get(
+                "symbol",
+                ""
+            )
+        )
     )
-
 
     # ========================================================
     # FINAL RESPONSE
@@ -449,6 +611,8 @@ def screen_all_stocks(
 
             "limit": limit,
 
-        }
+        },
+
+        "processed": processed,
 
     }

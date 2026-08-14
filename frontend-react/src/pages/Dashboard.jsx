@@ -188,7 +188,7 @@ function Dashboard() {
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const screenerData = await getScreener();
+        const screenerData = await getScreener(20);
 
         /*
          * Your backend returns:

@@ -5,9 +5,7 @@ import yfinance as yf
 
 from backend.services.yahoo_ticker import get_yahoo_ticker
 
-
 router = APIRouter()
-
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 

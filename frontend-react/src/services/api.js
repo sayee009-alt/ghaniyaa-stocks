@@ -46,11 +46,15 @@ export async function getNews(symbol) {
   const response = await fetch(`${API_BASE}/news/${symbol}`);
   return await response.json();
 }
-export async function getScreener() {
-  const response = await fetch(`${API_BASE}/screener`);
+export async function getScreener(limit = 20) {
+  const response = await fetch(
+    `${API_BASE}/screener?limit=${limit}`
+  );
 
   if (!response.ok) {
-    throw new Error(`Screener API failed: ${response.status}`);
+    throw new Error(
+      `Screener API failed: ${response.status}`
+    );
   }
 
   return await response.json();

@@ -2,7 +2,6 @@ from fastapi import APIRouter
 
 from backend.services.screener import screen_all_stocks
 
-
 router = APIRouter()
 
 
@@ -14,7 +13,6 @@ def screener(
     order: str = "desc",
     limit: int | None = None,
 ):
-
     return screen_all_stocks(
         sector=sector,
         min_score=min_score,
