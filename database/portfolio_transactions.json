@@ -62,5 +62,13 @@
         "buyPrice": 1679.68,
         "sellPrice": 2361.0,
         "profit": 681.32
+    },
+    {
+        "type": "SELL",
+        "symbol": "INFY",
+        "quantity": 2.0,
+        "buyPrice": 1026.67,
+        "sellPrice": 1169.2,
+        "profit": 285.06
     }
 ]

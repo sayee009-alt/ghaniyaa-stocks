@@ -3,7 +3,10 @@ import json
 from pathlib import Path
 import yfinance as yf
 
-from backend.services.yahoo_ticker import get_yahoo_ticker
+from backend.services.yahoo_ticker import (
+    get_yahoo_ticker,
+    is_resolvable_yahoo_ticker,
+)
 
 router = APIRouter()
 
@@ -283,6 +286,21 @@ def add_portfolio(stock: dict):
     symbol = stock["symbol"].upper()
     quantity = float(stock["quantity"])
     buy_price = float(stock["buyPrice"])
+        # ========================================================
+    # VALIDATE STOCK SYMBOL
+    # ========================================================
+
+    if not symbol:
+        raise HTTPException(
+            status_code=400,
+            detail="Stock symbol is required."
+        )
+
+    if not is_resolvable_yahoo_ticker(symbol):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{symbol} is not a valid stock symbol in Ghaniyaa universe."
+        )
 
     if quantity <= 0:
 

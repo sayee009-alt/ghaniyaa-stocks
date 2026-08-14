@@ -1,50 +1,107 @@
 import { useState } from "react";
 
-function PortfolioBuilder({ onAdd, onSell }) {
-
-  const [mode, setMode] = useState("buy");
+function PortfolioBuilder({ onAdd }) {
 
   const [symbol, setSymbol] = useState("");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
 
+  const [symbolStatus, setSymbolStatus] = useState("");
+  const [validSymbol, setValidSymbol] = useState(false);
+
+  function validateSymbol(value) {
+
+    const cleanedSymbol = value
+      .trim()
+      .toUpperCase();
+
+    setSymbol(cleanedSymbol);
+
+    setQuantity("");
+    setPrice("");
+
+    if (!cleanedSymbol) {
+
+      setSymbolStatus("");
+      setValidSymbol(false);
+
+      return;
+    }
+
+    /*
+     * Basic stock-symbol format validation.
+     *
+     * Real stock validation is still performed
+     * by the backend before saving.
+     */
+
+    const symbolPattern = /^[A-Z][A-Z0-9&.-]{1,19}$/;
+
+    if (!symbolPattern.test(cleanedSymbol)) {
+
+      setSymbolStatus(
+        "❌ Invalid stock symbol format"
+      );
+
+      setValidSymbol(false);
+
+      return;
+    }
+
+    setSymbolStatus(
+      "✓ Symbol format looks valid"
+    );
+
+    setValidSymbol(true);
+  }
+
   function handleSubmit(e) {
 
     e.preventDefault();
 
-    if (!symbol || !quantity || !price) {
+    if (!validSymbol) {
+
+      alert(
+        "Please enter a valid stock symbol."
+      );
+
       return;
     }
 
-    if (mode === "buy") {
+    if (!quantity || Number(quantity) <= 0) {
 
-      onAdd({
+      alert(
+        "Please enter a valid quantity."
+      );
 
-        symbol: symbol.toUpperCase(),
-
-        quantity: Number(quantity),
-
-        buyPrice: Number(price)
-
-      });
-
-    } else {
-
-      onSell({
-
-        symbol: symbol.toUpperCase(),
-
-        quantity: Number(quantity),
-
-        sellPrice: Number(price)
-
-      });
-
+      return;
     }
+
+    if (!price || Number(price) <= 0) {
+
+      alert(
+        "Please enter a valid buy price."
+      );
+
+      return;
+    }
+
+    onAdd({
+
+      symbol: symbol.toUpperCase(),
+
+      quantity: Number(quantity),
+
+      buyPrice: Number(price)
+
+    });
 
     setSymbol("");
     setQuantity("");
     setPrice("");
+
+    setSymbolStatus("");
+    setValidSymbol(false);
   }
 
   return (
@@ -52,108 +109,120 @@ function PortfolioBuilder({ onAdd, onSell }) {
     <div className="bg-white p-6 rounded shadow">
 
       <h2 className="text-xl font-bold mb-4">
-        💼 Portfolio Builder
+        💼 Add to Portfolio
       </h2>
-
-      {/* ======================================================
-          MODE BUTTONS
-      ====================================================== */}
-
-      <div className="flex gap-3 mb-4">
-
-        <button
-          type="button"
-          onClick={() => setMode("buy")}
-          className={`px-5 py-2 rounded ${
-            mode === "buy"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200"
-          }`}
-        >
-          Buy / Add
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMode("sell")}
-          className={`px-5 py-2 rounded ${
-            mode === "sell"
-              ? "bg-red-600 text-white"
-              : "bg-gray-200"
-          }`}
-        >
-          Sell / Remove
-        </button>
-
-      </div>
-
-      {/* ======================================================
-          FORM
-      ====================================================== */}
 
       <form
         onSubmit={handleSubmit}
-        className="grid grid-cols-4 gap-3"
+        className="grid grid-cols-1 md:grid-cols-4 gap-3"
       >
 
-        <input
-          className="border p-2 rounded"
-          placeholder="Symbol"
-          value={symbol}
-          onChange={(e) =>
-            setSymbol(
-              e.target.value.toUpperCase()
-            )
-          }
-        />
+        {/* =====================================================
+            SYMBOL
+        ====================================================== */}
+
+        <div>
+
+          <input
+            className="border p-2 rounded w-full"
+            placeholder="Symbol"
+            value={symbol}
+            maxLength={20}
+            onChange={(e) => {
+
+              const value = e.target.value
+                .toUpperCase()
+                .replace(/[^A-Z0-9&.-]/g, "");
+
+              validateSymbol(value);
+
+            }}
+          />
+
+          {symbolStatus && (
+
+            <p
+              className={`text-sm mt-1 ${
+                validSymbol
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              {symbolStatus}
+            </p>
+
+          )}
+
+        </div>
+
+
+        {/* =====================================================
+            QUANTITY
+        ====================================================== */}
 
         <input
           className="border p-2 rounded"
           type="number"
           min="1"
-          placeholder={
-            mode === "buy"
-              ? "Quantity"
-              : "Sell Quantity"
-          }
+          step="1"
+          placeholder="Quantity"
           value={quantity}
-          onChange={(e) =>
-            setQuantity(e.target.value)
-          }
+          disabled={!validSymbol}
+          onChange={(e) => {
+
+            const value = e.target.value;
+
+            if (
+              value === "" ||
+              /^\d+$/.test(value)
+            ) {
+
+              setQuantity(value);
+
+            }
+
+          }}
         />
+
+
+        {/* =====================================================
+            BUY PRICE
+        ====================================================== */}
 
         <input
           className="border p-2 rounded"
           type="number"
-          min="0"
+          min="0.01"
           step="0.01"
-          placeholder={
-            mode === "buy"
-              ? "Buy Price"
-              : "Sell Price"
-          }
+          placeholder="Buy Price"
           value={price}
+          disabled={!validSymbol}
           onChange={(e) =>
             setPrice(e.target.value)
           }
         />
 
+
+        {/* =====================================================
+            ADD BUTTON
+        ====================================================== */}
+
         <button
-          className={`text-white rounded ${
-            mode === "buy"
-              ? "bg-blue-600"
-              : "bg-red-600"
-          }`}
+          className="bg-blue-600 text-white rounded px-4 py-2 disabled:bg-gray-400"
           type="submit"
+          disabled={
+            !validSymbol ||
+            !quantity ||
+            !price
+          }
         >
-          {mode === "buy"
-            ? "Add"
-            : "Sell"}
+          Add to Portfolio
         </button>
 
       </form>
 
     </div>
+
   );
 }
 
